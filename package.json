@@ -1,0 +1,50 @@
+{
+  "name": "emotion-aware-learning-system",
+  "version": "1.0.0",
+  "description": "Emotion-Aware Adaptive Learning System - Final Year Thesis Project",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
+    "health-check": "tsx scripts/health-check.ts"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.20.0",
+    "@prisma/client": "^5.22.0",
+    "@tensorflow/tfjs": "^4.22.0",
+    "bcrypt": "^5.1.1",
+    "lucide-react": "^0.462.0",
+    "next": "^14.2.18",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-webcam": "^7.2.0",
+    "sonner": "^1.7.1",
+    "zod": "^3.23.8",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/bcrypt": "^5.0.2",
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/react-webcam": "^1.1.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.18",
+    "postcss": "^8.4.49",
+    "prisma": "^5.22.0",
+    "tailwindcss": "^3.4.15",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,131 @@
+// Prisma Schema for Emotion-Aware Adaptive Learning System
+// Database: MySQL (Local)
+// ORM: Prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ====================================
+// ENUMS
+// ====================================
+
+enum Role {
+  STUDENT
+  TEACHER
+}
+
+enum LearningStyle {
+  VISUAL      // Prefers images, diagrams, charts
+  AUDITORY    // Prefers listening, verbal explanations
+  KINESTHETIC // Prefers hands-on, interactive activities
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+// ====================================
+// MODELS
+// ====================================
+
+// User Model: Represents both Students and Teachers
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String         // Hashed password (use bcrypt)
+  role          Role           @default(STUDENT)
+  learningStyle LearningStyle? // Nullable - Set after onboarding questionnaire
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Relations
+  quizLogs    QuizLog[]
+  emotionLogs EmotionLog[]
+
+  @@index([email])
+  @@index([role])
+}
+
+// Chapter Model: Represents learning modules/chapters
+model Chapter {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  orderIndex  Int      @default(0) // For sorting chapters in order
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  materials Material[]
+
+  @@index([orderIndex])
+}
+
+// Material Model: Represents learning content within a chapter
+model Material {
+  id         String     @id @default(cuid())
+  chapterId  String
+  title      String
+  content    String     @db.LongText // Main learning content (supports rich text/markdown)
+  imageUrl   String?    // Optional image for the material
+  difficulty Difficulty @default(MEDIUM)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  // Relations
+  chapter     Chapter      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  quizLogs    QuizLog[]
+  emotionLogs EmotionLog[]
+
+  @@index([chapterId])
+  @@index([difficulty])
+}
+
+// QuizLog Model: Records quiz interactions and AI feedback
+model QuizLog {
+  id              String   @id @default(cuid())
+  userId          String
+  materialId      String
+  question        String   @db.Text // The AI-generated question
+  userAnswer      String   @db.Text // Student's answer
+  aiFeedback      String   @db.Text // AI's feedback on the answer
+  score           Float    @default(0) // Score between 0-100
+  detectedEmotion String? // Emotion at the time of quiz (e.g., "Anxious", "Neutral", "Happy")
+  createdAt       DateTime @default(now())
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([materialId])
+  @@index([createdAt])
+}
+
+// EmotionLog Model: Records real-time emotion detection data
+model EmotionLog {
+  id           String   @id @default(cuid())
+  userId       String
+  materialId   String? // Nullable - Can log emotions outside material context
+  emotionLabel String // e.g., "Neutral", "Happy", "Anxious", "Confused", "Frustrated"
+  confidence   Float // Confidence level of detection (0.0 - 1.0)
+  timestamp    DateTime @default(now())
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  material Material? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([materialId])
+  @@index([timestamp])
+  @@index([emotionLabel])
+}
