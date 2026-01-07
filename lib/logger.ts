@@ -5,7 +5,6 @@
  * All errors in the application should be logged through this system.
  */
 
-import { prisma } from './db';
 
 export interface ErrorLog {
   id?: number;
@@ -51,7 +50,7 @@ function logToConsole(error: ErrorLog) {
 /**
  * Log error to database (optional, for production monitoring)
  */
-async function logToDatabase(error: ErrorLog): Promise<void> {
+async function logToDatabase(_error: ErrorLog): Promise<void> {
   // Only log to database in production or if explicitly enabled
   if (process.env.NODE_ENV === 'production' || process.env.ENABLE_ERROR_DB_LOGGING === 'true') {
     try {

@@ -6,9 +6,9 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useUser } from '@/lib/store';
+import { useCurrentEmotion, useUser } from '@/lib/store';
 import { Send, Loader2, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -33,6 +33,7 @@ export default function QuizPage() {
   const router = useRouter();
   const params = useParams();
   const user = useUser();
+  const currentEmotion = useCurrentEmotion();
   const materialId = params.materialId as string;
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -42,16 +43,7 @@ export default function QuizPage() {
   const [isStarted, setIsStarted] = useState(false);
   const [material, setMaterial] = useState<any>(null);
 
-  useEffect(() => {
-    if (!user) {
-      router.push('/auth/login');
-      return;
-    }
-
-    fetchMaterial();
-  }, [user, materialId, router]);
-
-  const fetchMaterial = async () => {
+  const fetchMaterial = useCallback(async () => {
     try {
       const res = await fetch(`/api/student/material/${materialId}`);
       if (res.ok) {
@@ -61,7 +53,16 @@ export default function QuizPage() {
     } catch (error) {
       console.error('Error fetching material:', error);
     }
-  };
+  }, [materialId]);
+
+  useEffect(() => {
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    fetchMaterial();
+  }, [user, router, fetchMaterial]);
 
   const startQuiz = async () => {
     if (!user) return;
@@ -73,14 +74,16 @@ export default function QuizPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           materialId,
-          learningStyle: user.learningStyle,
-          emotion: 'neutral',
+          userId: user.id,
+          currentEmotion: currentEmotion?.label || 'Neutral',
+          confidence: currentEmotion?.confidence ?? 1.0,
         }),
       });
 
       if (!res.ok) throw new Error('Failed to generate quiz');
 
-      const question: QuizQuestion = await res.json();
+      const payload = await res.json();
+      const question: QuizQuestion = payload?.data;
       setCurrentQuestion(question);
       setIsStarted(true);
 
@@ -127,16 +130,19 @@ export default function QuizPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId: user.id,
+          materialId,
           question: currentQuestion.question,
           userAnswer: userAnswer,
           expectedAnswer: currentQuestion.expectedAnswer,
-          emotion: 'neutral',
+          currentEmotion: currentEmotion?.label || 'Neutral',
         }),
       });
 
       if (!res.ok) throw new Error('Failed to get feedback');
 
-      const feedback = await res.json();
+      const feedbackPayload = await res.json();
+      const feedback = feedbackPayload?.data;
 
       const feedbackMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -156,10 +162,11 @@ export default function QuizPage() {
         body: JSON.stringify({
           userId: user.id,
           materialId,
+          question: currentQuestion.question,
           userAnswer,
           aiFeedback: feedback.feedback,
           score: feedback.score,
-          detectedEmotion: 'neutral',
+          detectedEmotion: currentEmotion?.label || 'Neutral',
         }),
       });
 
@@ -171,13 +178,15 @@ export default function QuizPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               materialId,
-              learningStyle: user.learningStyle,
-              emotion: 'neutral',
+              userId: user.id,
+              currentEmotion: currentEmotion?.label || 'Neutral',
+              confidence: currentEmotion?.confidence ?? 1.0,
             }),
           });
 
           if (nextRes.ok) {
-            const nextQuestion: QuizQuestion = await nextRes.json();
+            const nextPayload = await nextRes.json();
+            const nextQuestion: QuizQuestion = nextPayload?.data;
             setCurrentQuestion(nextQuestion);
 
             const nextBotMessage: Message = {

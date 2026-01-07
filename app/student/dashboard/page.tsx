@@ -6,10 +6,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/store';
-import { BookOpen, Brain, TrendingUp, Heart, ArrowRight, BarChart3 } from 'lucide-react';
+import { BookOpen, Brain, Heart, ArrowRight, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 
 interface Chapter {
@@ -35,16 +35,7 @@ export default function StudentDashboard() {
   const [emotionStats, setEmotionStats] = useState<EmotionStats>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) {
-      router.push('/auth/login');
-      return;
-    }
-
-    fetchData();
-  }, [user, router]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       // Fetch chapters and materials
       const chaptersRes = await fetch('/api/student/chapters');
@@ -66,7 +57,16 @@ export default function StudentDashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    fetchData();
+  }, [user, router, fetchData]);
 
   if (isLoading) {
     return (

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = generateQuizSchema.parse(body);
 
-    const { materialId, userId, currentEmotion, confidence } = validatedData;
+    const { materialId, userId, currentEmotion, confidence: _confidence } = validatedData;
 
     // Fetch material content from database
     const material = await prisma.material.findUnique({

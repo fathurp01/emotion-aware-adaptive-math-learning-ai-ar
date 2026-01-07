@@ -1,6 +1,6 @@
 /**
  * Create Material Page (Teacher)
- * 
+ *
  * Form to create new learning materials with image upload
  */
 
@@ -21,6 +21,8 @@ interface Chapter {
 export default function CreateMaterialPage() {
   const router = useRouter();
   const user = useUser();
+
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
 
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -45,35 +47,45 @@ export default function CreateMaterialPage() {
       return;
     }
 
-    fetchChapters();
-  }, [user, router]);
-
-  const fetchChapters = async () => {
-    try {
-      const res = await fetch('/api/teacher/chapters');
-      if (res.ok) {
-        const data = await res.json();
-        setChapters(data);
-        if (data.length > 0) {
-          setFormData((prev) => ({ ...prev, chapterId: data[0].id }));
+    void (async () => {
+      try {
+        const res = await fetch('/api/teacher/chapters');
+        if (res.ok) {
+          const data = await res.json();
+          setChapters(data);
+          if (Array.isArray(data) && data.length > 0) {
+            setFormData((prev) => ({ ...prev, chapterId: data[0].id }));
+          }
         }
+      } catch (error) {
+        console.error('Error fetching chapters:', error);
       }
-    } catch (error) {
-      console.error('Error fetching chapters:', error);
-    }
-  };
+    })();
+  }, [user, router]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setFormData((prev) => ({ ...prev, imageFile: file }));
+    if (!file) return;
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file.type.startsWith('image/')) {
+      toast.error('File harus berupa gambar');
+      e.currentTarget.value = '';
+      return;
     }
+
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error('Ukuran gambar maksimal 5MB');
+      e.currentTarget.value = '';
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, imageFile: file }));
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,8 +104,16 @@ export default function CreateMaterialPage() {
       formDataToSend.append('chapterId', formData.chapterId);
       formDataToSend.append('content', formData.content);
       formDataToSend.append('difficulty', formData.difficulty);
-      
+
       if (formData.imageFile) {
+        if (!formData.imageFile.type.startsWith('image/')) {
+          toast.error('File harus berupa gambar');
+          return;
+        }
+        if (formData.imageFile.size > MAX_IMAGE_BYTES) {
+          toast.error('Ukuran gambar maksimal 5MB');
+          return;
+        }
         formDataToSend.append('image', formData.imageFile);
       }
 
@@ -103,8 +123,8 @@ export default function CreateMaterialPage() {
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to create material');
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to create material');
       }
 
       toast.success('Materi berhasil dibuat!');
@@ -175,6 +195,7 @@ export default function CreateMaterialPage() {
                 ))
               )}
             </select>
+
             {chapters.length === 0 && (
               <p className="text-sm text-red-600 mt-1">
                 Harap buat chapter terlebih dahulu di database
@@ -235,6 +256,7 @@ export default function CreateMaterialPage() {
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
               {imagePreview ? (
                 <div className="space-y-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imagePreview}
                     alt="Preview"

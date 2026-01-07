@@ -19,8 +19,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
-import { useEmotionStore, useCurrentEmotion, useUser } from '@/lib/store';
+import { useCurrentEmotion, useUser } from '@/lib/store';
 import { applyFuzzyLogic, getEncouragementMessage } from '@/utils/fuzzyLogic';
 import type { FuzzyOutputs } from '@/utils/fuzzyLogic';
 import EmotionCamera from '@/components/ai/EmotionCamera';
@@ -251,9 +252,11 @@ export default function LearnMaterialPage() {
             {/* Image (if exists) */}
             {material.imageUrl && (
               <div className="mb-6 rounded-lg overflow-hidden shadow-lg">
-                <img
+                <Image
                   src={material.imageUrl}
                   alt={material.title}
+                  width={1200}
+                  height={675}
                   className="w-full h-auto"
                 />
               </div>
@@ -362,7 +365,7 @@ export default function LearnMaterialPage() {
                     🫁 Breathing Exercise
                   </h3>
                   <p className="text-sm text-blue-800 mb-4">
-                    Let's take a moment to relax. Follow this breathing pattern:
+                    Let&apos;s take a moment to relax. Follow this breathing pattern:
                   </p>
                   <ol className="text-sm text-blue-700 space-y-2 list-decimal list-inside">
                     <li>Breathe in slowly for 4 seconds</li>

@@ -28,6 +28,10 @@ import * as tf from '@tensorflow/tfjs';
 import { useEmotionStore } from '@/lib/store';
 import type { EmotionLabel } from '@/lib/store';
 import { Camera, CameraOff, Loader2 } from 'lucide-react';
+import {
+  initMediaPipeEmotionFallback,
+  detectEmotionWithMediaPipe,
+} from './mediapipeEmotion';
 
 // ====================================
 // TYPE DEFINITIONS
@@ -60,8 +64,9 @@ export default function EmotionCamera({
 
   // Refs
   const webcamRef = useRef<Webcam>(null);
-  const modelRef = useRef<tf.GraphModel | null>(null);
+  const modelRef = useRef<tf.GraphModel | tf.LayersModel | null>(null);
   const metadataRef = useRef<{ labels: string[] } | null>(null);
+  const detectorModeRef = useRef<'tfjs' | 'mediapipe' | 'none'>('none');
   const animationFrameRef = useRef<number | null>(null);
   const lastLogTimeRef = useRef<number>(0);
 
@@ -73,45 +78,114 @@ export default function EmotionCamera({
   // MODEL LOADING
   // ====================================
 
+  const getConfiguredLabels = (): string[] | null => {
+    const raw = process.env.NEXT_PUBLIC_EMOTION_LABELS;
+    if (!raw) return null;
+    const labels = raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return labels.length > 0 ? labels : null;
+  };
+
+  const resolveModelUrls = () => {
+    const modelURL = process.env.NEXT_PUBLIC_EMOTION_MODEL_URL || '/model/model.json';
+    const metadataURL =
+      process.env.NEXT_PUBLIC_EMOTION_METADATA_URL || '/model/metadata.json';
+    return { modelURL, metadataURL };
+  };
+
+  const initMediaPipeFallback = useCallback(async () => {
+    const wasmBaseUrl = process.env.NEXT_PUBLIC_MEDIAPIPE_WASM_BASE_URL;
+    const modelAssetPath = process.env.NEXT_PUBLIC_MEDIAPIPE_FACE_LANDMARKER_MODEL_URL;
+    await initMediaPipeEmotionFallback({
+      wasmBaseUrl: wasmBaseUrl || undefined,
+      modelAssetPath: modelAssetPath || undefined,
+    });
+    detectorModeRef.current = 'mediapipe';
+    setModelLoaded(true);
+    console.log('✅ MediaPipe fallback initialized (blendshape-based)');
+  }, [setModelLoaded]);
+
   const loadModel = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Model files should be in /public/model/
-      // model.json and metadata.json exported from Teachable Machine
-      const modelURL = '/model/model.json';
-      const metadataURL = '/model/metadata.json';
+      const { modelURL, metadataURL } = resolveModelUrls();
 
-      // Load the TensorFlow.js model
-      const model = await tf.loadGraphModel(modelURL);
-      modelRef.current = model;
+      // Try GraphModel first (common for Teachable Machine + TFJS converter graph models)
+      try {
+        const graphModel = await tf.loadGraphModel(modelURL);
+        modelRef.current = graphModel;
+      } catch (graphErr) {
+        // Then try LayersModel (common for custom MobileNetV2 transfer learning exports)
+        const layersModel = await tf.loadLayersModel(modelURL);
+        modelRef.current = layersModel;
+        console.warn('ℹ️ Loaded as LayersModel (GraphModel load failed):', graphErr);
+      }
 
-      // Load metadata (contains class labels)
-      const metadataResponse = await fetch(metadataURL);
-      const metadata = await metadataResponse.json();
-      metadataRef.current = metadata;
+      // Try metadata.json, otherwise fall back to env labels.
+      try {
+        const metadataResponse = await fetch(metadataURL);
+        if (!metadataResponse.ok) throw new Error(`metadata fetch failed: ${metadataResponse.status}`);
+        const metadata = await metadataResponse.json();
+        if (metadata?.labels && Array.isArray(metadata.labels)) {
+          metadataRef.current = metadata;
+        } else {
+          metadataRef.current = null;
+        }
+      } catch {
+        metadataRef.current = null;
+      }
 
+      if (!metadataRef.current) {
+        const labels = getConfiguredLabels();
+        if (labels) {
+          metadataRef.current = { labels };
+        }
+      }
+
+      if (!metadataRef.current?.labels || metadataRef.current.labels.length === 0) {
+        throw new Error(
+          'Emotion model loaded but labels are missing. Provide /model/metadata.json or NEXT_PUBLIC_EMOTION_LABELS.'
+        );
+      }
+
+      detectorModeRef.current = 'tfjs';
       setModelLoaded(true);
-      console.log('✅ Emotion detection model loaded successfully');
-      console.log('📋 Labels:', metadata.labels);
+
+      console.log('✅ Emotion model loaded successfully');
+      console.log('📦 Model URL:', modelURL);
+      console.log('📋 Labels:', metadataRef.current.labels);
     } catch (err) {
       console.error('❌ Error loading model:', err);
-      setError(
-        'Failed to load emotion detection model. Please check if model files exist in /public/model/'
-      );
-      setModelLoaded(false);
+
+      // Fallback to MediaPipe so the feature still works.
+      try {
+        await initMediaPipeFallback();
+        setError(
+          'TFJS emotion model not found or failed to load. Using MediaPipe fallback (reduced accuracy).'
+        );
+      } catch (fallbackErr) {
+        console.error('❌ MediaPipe fallback init failed:', fallbackErr);
+        setError(
+          'Failed to load emotion detection model and fallback. Please check model files and network access.'
+        );
+        setModelLoaded(false);
+        detectorModeRef.current = 'none';
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [setModelLoaded]);
+  }, [setModelLoaded, initMediaPipeFallback]);
 
   // ====================================
   // EMOTION DETECTION LOOP
   // ====================================
 
   const detectEmotion = useCallback(async () => {
-    if (!modelRef.current || !metadataRef.current || !webcamRef.current || !isCamActive) {
+    if (!webcamRef.current || !isCamActive) {
       return;
     }
 
@@ -123,34 +197,66 @@ export default function EmotionCamera({
         return;
       }
 
-      // Preprocess video frame for model
-      const tensor = tf.tidy(() => {
-        // Convert video to tensor
-        const img = tf.browser.fromPixels(webcam);
-        // Resize to model input size (usually 224x224 for Teachable Machine)
-        const resized = tf.image.resizeBilinear(img, [224, 224]);
-        // Normalize to [-1, 1]
-        const normalized = resized.div(127.5).sub(1);
-        // Add batch dimension
-        return normalized.expandDims(0);
-      });
+      let emotionLabel: EmotionLabel | null = null;
+      let confidence = 0;
 
-      // Run prediction
-      const predictions = await modelRef.current.predict(tensor) as tf.Tensor;
-      const probabilities = await predictions.data();
-      tensor.dispose();
-      predictions.dispose();
+      if (detectorModeRef.current === 'tfjs' && modelRef.current && metadataRef.current?.labels) {
+        // Preprocess video frame for model
+        const tensor = tf.tidy(() => {
+          // Convert video to tensor
+          const img = tf.browser.fromPixels(webcam);
+          // Resize to model input size (typical 224x224 for MobileNetV2)
+          const resized = tf.image.resizeBilinear(img, [224, 224]);
+          // Normalize to [-1, 1]
+          const normalized = resized.div(127.5).sub(1);
+          // Add batch dimension
+          return normalized.expandDims(0);
+        });
 
-      // Find highest confidence prediction
-      const maxIndex = probabilities.indexOf(Math.max(...Array.from(probabilities)));
-      const confidence = probabilities[maxIndex];
-      const className = metadataRef.current.labels[maxIndex];
+        // Run prediction (GraphModel or LayersModel)
+        let output: tf.Tensor | tf.Tensor[];
+        try {
+          output = (modelRef.current as any).predict(tensor);
+        } catch (predictErr) {
+          tensor.dispose();
+          throw predictErr;
+        }
 
-      // Map class name to EmotionLabel
-      const emotionLabel = mapClassNameToEmotion(className);
+        const logitsTensor = Array.isArray(output) ? output[0] : output;
+        const probabilities = await logitsTensor.data();
 
-      // Only update if confidence is above threshold (50%)
-      if (confidence > 0.5) {
+        tensor.dispose();
+        if (Array.isArray(output)) {
+          for (const t of output) t.dispose();
+        } else {
+          output.dispose();
+        }
+
+        const probsArray = Array.from(probabilities);
+        const maxIndex = probsArray.indexOf(Math.max(...probsArray));
+        confidence = probsArray[maxIndex] ?? 0;
+        const className = metadataRef.current.labels[maxIndex] ?? 'neutral';
+        emotionLabel = mapClassNameToEmotion(className);
+      } else if (detectorModeRef.current === 'mediapipe') {
+        const mp = await detectEmotionWithMediaPipe(webcam, Date.now());
+        if (mp) {
+          emotionLabel = mp.label;
+          confidence = mp.confidence;
+        }
+      }
+
+      if (!emotionLabel) {
+        // Continue loop
+        setTimeout(() => {
+          animationFrameRef.current = requestAnimationFrame(detectEmotion);
+        }, 1000);
+        return;
+      }
+
+      // Only update if confidence is above threshold
+      // MediaPipe fallback uses heuristics; use slightly lower threshold.
+      const threshold = detectorModeRef.current === 'mediapipe' ? 0.35 : 0.5;
+      if (confidence > threshold) {
         const emotionData = {
           label: emotionLabel,
           confidence,
@@ -172,13 +278,23 @@ export default function EmotionCamera({
       }
     } catch (err) {
       console.error('Error detecting emotion:', err);
+
+      // If TFJS inference fails at runtime, switch to MediaPipe fallback.
+      if (detectorModeRef.current === 'tfjs') {
+        try {
+          await initMediaPipeFallback();
+          setError('TFJS emotion inference failed. Switched to MediaPipe fallback.');
+        } catch {
+          // keep silent; loop continues
+        }
+      }
     }
 
     // Continue loop (run every ~1 second)
     setTimeout(() => {
       animationFrameRef.current = requestAnimationFrame(detectEmotion);
     }, 1000);
-  }, [isCamActive, userId, materialId, autoLog, onEmotionDetected, setEmotion]);
+  }, [isCamActive, userId, materialId, autoLog, onEmotionDetected, setEmotion, initMediaPipeFallback]);
 
   // ====================================
   // LIFECYCLE

@@ -95,13 +95,35 @@ Ini akan membuat:
 
 ### 6. Prepare Emotion Detection Model
 
-**Opsi A: Gunakan model yang sudah ada (recommended)**
-1. Download model dari [link ini - jika tersedia]
-2. Extract dan copy ke folder `public/model/`
-3. Pastikan ada 3 files:
-   - `model.json`
-   - `model_metadata.json`
-   - `weights.bin`
+Sistem frontend memakai TensorFlow.js untuk klasifikasi emosi.
+
+**Default path (tanpa konfigurasi tambahan):**
+- `public/model/model.json`
+- `public/model/metadata.json` (berisi `labels: string[]`)
+
+**Konfigurasi (untuk model MobileNetV2 hasil transfer learning / fine-tuning):**
+Tambahkan env variable berikut (opsional):
+
+```env
+# URL/path TFJS model.json (GraphModel atau LayersModel)
+NEXT_PUBLIC_EMOTION_MODEL_URL=/model/model.json
+
+# URL/path metadata.json yang berisi labels
+NEXT_PUBLIC_EMOTION_METADATA_URL=/model/metadata.json
+
+# Jika metadata.json tidak ada, bisa set labels via env (comma-separated)
+NEXT_PUBLIC_EMOTION_LABELS=Neutral,Happy,Anxious,Confused,Frustrated,Sad,Surprised
+
+# Opsional: override lokasi wasm MediaPipe (jika ingin self-host)
+# NEXT_PUBLIC_MEDIAPIPE_WASM_BASE_URL=https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm
+
+# Opsional: override model .task MediaPipe (jika ingin self-host/offline)
+# NEXT_PUBLIC_MEDIAPIPE_FACE_LANDMARKER_MODEL_URL=/mediapipe/face_landmarker.task
+```
+
+Catatan:
+- Model akan dicoba load sebagai GraphModel dulu, lalu fallback ke LayersModel.
+- Jika model tidak ditemukan / error saat load atau inferensi, sistem otomatis fallback ke MediaPipe (akurasi lebih rendah, berbasis heuristic blendshapes).
 
 **Opsi B: Train model sendiri**
 1. Kunjungi [Teachable Machine](https://teachablemachine.withgoogle.com/)
@@ -110,7 +132,7 @@ Ini akan membuat:
 4. Upload gambar wajah untuk setiap emosi (minimal 50 per class)
 5. Train model
 6. Export → "TensorFlow.js" → "Download"
-7. Extract ke `public/model/`
+7. Extract ke `public/model/` dan pastikan nama file sesuai default (atau gunakan env URL di atas)
 
 ### 7. Run Development Server
 

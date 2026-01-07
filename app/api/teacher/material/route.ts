@@ -28,6 +28,27 @@ export async function POST(req: NextRequest) {
     const difficulty = formData.get('difficulty') as string;
     const imageFile = formData.get('image') as File | null;
 
+    // Validate image (optional)
+    if (imageFile) {
+      const maxBytes = 5 * 1024 * 1024; // 5MB
+      const type = (imageFile as any)?.type as string | undefined;
+      const size = (imageFile as any)?.size as number | undefined;
+
+      if (type && !type.startsWith('image/')) {
+        return NextResponse.json(
+          { error: 'Invalid image type' },
+          { status: 400 }
+        );
+      }
+
+      if (typeof size === 'number' && size > maxBytes) {
+        return NextResponse.json(
+          { error: 'Image size exceeds 5MB' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Validate input
     const validated = materialSchema.parse({
       title,
@@ -47,7 +68,7 @@ export async function POST(req: NextRequest) {
       const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
       try {
         await mkdir(uploadsDir, { recursive: true });
-      } catch (error) {
+      } catch {
         // Directory might already exist, that's fine
       }
 

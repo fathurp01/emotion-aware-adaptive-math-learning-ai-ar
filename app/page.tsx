@@ -6,7 +6,7 @@
  */
 
 import Link from 'next/link';
-import { BookOpen, Brain, Heart, Users, ArrowRight } from 'lucide-react';
+import { BookOpen, Brain, Heart, ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -62,14 +62,14 @@ export default function HomePage() {
               href="/auth/register?role=student"
               className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2 group"
             >
-              I'm a Student
+              I&apos;m a Student
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link
               href="/auth/register?role=teacher"
               className="px-8 py-4 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium flex items-center justify-center gap-2 group"
             >
-              I'm a Teacher
+              I&apos;m a Teacher
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
