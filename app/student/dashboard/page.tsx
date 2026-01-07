@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/lib/store';
+import { useHasHydrated, useUser } from '@/lib/store';
 import { BookOpen, Brain, Heart, ArrowRight, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -30,6 +30,7 @@ interface EmotionStats {
 export default function StudentDashboard() {
   const router = useRouter();
   const user = useUser();
+  const hasHydrated = useHasHydrated();
 
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [emotionStats, setEmotionStats] = useState<EmotionStats>({});
@@ -60,13 +61,14 @@ export default function StudentDashboard() {
   }, [user]);
 
   useEffect(() => {
+    if (!hasHydrated) return;
     if (!user) {
       router.push('/auth/login');
       return;
     }
 
     fetchData();
-  }, [user, router, fetchData]);
+  }, [hasHydrated, user, router, fetchData]);
 
   if (isLoading) {
     return (

@@ -18,6 +18,9 @@ type FaceLandmarkerInstance = {
 
 let faceLandmarkerPromise: Promise<FaceLandmarkerInstance> | null = null;
 
+// Keep in sync with package.json to avoid CDN "@latest" mismatches.
+const TASKS_VISION_VERSION = '0.10.22-rc.20250304';
+
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
@@ -29,12 +32,20 @@ function getBlendshapeScore(scores: BlendshapeScores, key: string): number {
 function toBlendshapeScores(result: any): BlendshapeScores {
   const scores: BlendshapeScores = {};
 
-  // MediaPipe returns: result.faceBlendshapes?: Array<Array<{ categoryName, score }>>
+  // tasks-vision has had a few result shapes across versions.
+  // Common shapes:
+  // 1) result.faceBlendshapes: Array<Array<{ categoryName, score }>>
+  // 2) result.faceBlendshapes: Array<{ categories: Array<{ categoryName, score }> }>
   const faceBlendshapes = result?.faceBlendshapes;
-  const firstFace = Array.isArray(faceBlendshapes) ? faceBlendshapes[0] : undefined;
-  if (!Array.isArray(firstFace)) return scores;
+  const first = Array.isArray(faceBlendshapes) ? faceBlendshapes[0] : undefined;
 
-  for (const item of firstFace) {
+  const items: any[] = Array.isArray(first)
+    ? first
+    : Array.isArray(first?.categories)
+      ? first.categories
+      : [];
+
+  for (const item of items) {
     const name = item?.categoryName;
     const score = item?.score;
     if (typeof name === 'string' && typeof score === 'number') {
@@ -43,6 +54,11 @@ function toBlendshapeScores(result: any): BlendshapeScores {
   }
 
   return scores;
+}
+
+function hasFaceLandmarks(result: any): boolean {
+  const landmarks = result?.faceLandmarks;
+  return Array.isArray(landmarks) && landmarks.length > 0;
 }
 
 function inferEmotionFromBlendshapes(scores: BlendshapeScores): MediaPipeEmotionResult {
@@ -113,32 +129,62 @@ export async function initMediaPipeEmotionFallback(options?: {
 }): Promise<void> {
   if (faceLandmarkerPromise) return;
 
-  faceLandmarkerPromise = (async () => {
-    const wasmBaseUrl =
-      options?.wasmBaseUrl ??
-      // Works for most setups; you can override with NEXT_PUBLIC_MEDIAPIPE_WASM_BASE_URL.
-      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm';
+  const wasmCandidates = options?.wasmBaseUrl
+    ? [options.wasmBaseUrl]
+    : [
+        `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VISION_VERSION}/wasm`,
+        `https://unpkg.com/@mediapipe/tasks-vision@${TASKS_VISION_VERSION}/wasm`,
+      ];
 
+  const modelCandidates = options?.modelAssetPath
+    ? [options.modelAssetPath]
+    : [
+        'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+      ];
+
+  faceLandmarkerPromise = (async () => {
     const vision: FaceLandmarkerModule = await import('@mediapipe/tasks-vision');
 
-    const filesetResolver = await vision.FilesetResolver.forVisionTasks(wasmBaseUrl);
+    let lastError: unknown = null;
+    for (const wasmBaseUrl of wasmCandidates) {
+      for (const modelAssetPath of modelCandidates) {
+        try {
+          const filesetResolver = await vision.FilesetResolver.forVisionTasks(wasmBaseUrl);
+          const landmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+              modelAssetPath,
+            },
+            runningMode: 'VIDEO',
+            numFaces: 1,
+            outputFaceBlendshapes: true,
+          });
 
-    // Uses a hosted model asset provided by MediaPipe.
-    const landmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
-      baseOptions: {
-        modelAssetPath:
-          options?.modelAssetPath ||
-          'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-      },
-      runningMode: 'VIDEO',
-      numFaces: 1,
-      outputFaceBlendshapes: true,
-    });
+          return landmarker as unknown as FaceLandmarkerInstance;
+        } catch (err) {
+          lastError = err;
+          // Try next candidate
+        }
+      }
+    }
 
-    return landmarker as unknown as FaceLandmarkerInstance;
+    const message =
+      lastError instanceof Error
+        ? lastError.message
+        : 'Unknown MediaPipe init error';
+    throw new Error(
+      `MediaPipe FaceLandmarker init failed. ${message}. ` +
+        `Tried wasmBaseUrl: ${wasmCandidates.join(' | ')} and modelAssetPath: ${modelCandidates.join(' | ')}. ` +
+        `If your network blocks CDNs/Google Storage, set NEXT_PUBLIC_MEDIAPIPE_WASM_BASE_URL and NEXT_PUBLIC_MEDIAPIPE_FACE_LANDMARKER_MODEL_URL to self-hosted URLs.`
+    );
   })();
 
-  await faceLandmarkerPromise;
+  try {
+    await faceLandmarkerPromise;
+  } catch (err) {
+    // Allow retry after a failed init.
+    faceLandmarkerPromise = null;
+    throw err;
+  }
 }
 
 export async function detectEmotionWithMediaPipe(
@@ -147,11 +193,26 @@ export async function detectEmotionWithMediaPipe(
 ): Promise<MediaPipeEmotionResult | null> {
   if (!faceLandmarkerPromise) return null;
 
-  const landmarker = await faceLandmarkerPromise;
+  let landmarker: FaceLandmarkerInstance;
+  try {
+    landmarker = await faceLandmarkerPromise;
+  } catch (err) {
+    // Init failed earlier; allow caller to continue without crashing.
+    console.warn('MediaPipe fallback not available:', err);
+    return null;
+  }
+
   const result = landmarker.detectForVideo(video, timestampMs);
 
   const scores = toBlendshapeScores(result);
-  if (Object.keys(scores).length === 0) return null;
+  if (Object.keys(scores).length === 0) {
+    // If landmarks exist but blendshapes are missing, we still consider the face detected.
+    // Return a low-confidence Neutral so the UI can show activity.
+    if (hasFaceLandmarks(result)) {
+      return { label: 'Neutral', confidence: 0.05 };
+    }
+    return null;
+  }
 
   return inferEmotionFromBlendshapes(scores);
 }

@@ -16,9 +16,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { generateQuiz } from '@/lib/gemini';
+import { generateCalculationQuizQuestion } from '@/lib/gemini';
 import { prisma } from '@/lib/db';
 import { errorLogger, logRequest } from '@/lib/logger';
+import { decideNextQuizDifficulty } from '@/utils/fuzzyLogic';
 
 // ====================================
 // VALIDATION SCHEMA
@@ -27,6 +28,10 @@ import { errorLogger, logRequest } from '@/lib/logger';
 const generateQuizSchema = z.object({
   materialId: z.string().min(1, 'Material ID is required'),
   userId: z.string().min(1, 'User ID is required'),
+  questionIndex: z.number().int().min(1).max(6).default(1),
+  lastDurationSeconds: z.number().min(0).max(300).optional(),
+  wrongCount: z.number().int().min(0).max(10).optional(),
+  previousQuestions: z.array(z.string().min(1)).max(6).optional(),
   currentEmotion: z
     .enum(['Neutral', 'Happy', 'Anxious', 'Confused', 'Frustrated', 'Sad', 'Surprised'])
     .default('Neutral'),
@@ -45,7 +50,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = generateQuizSchema.parse(body);
 
-    const { materialId, userId, currentEmotion, confidence: _confidence } = validatedData;
+    const {
+      materialId,
+      userId,
+      questionIndex,
+      lastDurationSeconds,
+      wrongCount,
+      previousQuestions,
+      currentEmotion,
+      confidence: _confidence,
+    } = validatedData;
 
     // Fetch material content from database
     const material = await prisma.material.findUnique({
@@ -89,11 +103,66 @@ export async function POST(request: NextRequest) {
     // Default to VISUAL if no learning style set
     const learningStyle = user.learningStyle || 'VISUAL';
 
-    // Generate quiz question using Gemini AI
-    const quizQuestion = await generateQuiz(
+    // Q1 is always a recap/reflection question (token-free; no Gemini).
+    if (questionIndex === 1) {
+      const hint =
+        currentEmotion === 'Anxious'
+          ? 'Tulis poin pentingnya pelan-pelan: definisi, rumus, dan contoh.'
+          : undefined;
+      const supportiveMessage =
+        currentEmotion === 'Anxious' ? 'Tenang, fokus ke poin-poin utama ya.' : undefined;
+
+      const duration = Date.now() - startTime;
+      logRequest('POST', '/api/quiz/generate', duration, 200);
+      return NextResponse.json({
+        success: true,
+        data: {
+          questionIndex,
+          questionType: 'RECAP',
+          question: `Sebutkan apa saja yang kamu pelajari dari materi: "${material.title}". Jelaskan singkat.`,
+          expectedAnswer: 'Ringkasan konsep/rumus utama dan contoh singkat.',
+          difficulty: 'EASY',
+          hint,
+          supportiveMessage,
+          materialId: material.id,
+          materialTitle: material.title,
+          materialDifficulty: material.difficulty,
+        },
+      });
+    }
+
+    // Q2-Q6: calculation question, difficulty adapts via fuzzy logic.
+    const durationSeconds = lastDurationSeconds ?? 30;
+    const wrongSoFar = wrongCount ?? 0;
+    const baseDifficulty = decideNextQuizDifficulty({
+      durationSeconds,
+      wrongCount: wrongSoFar,
+    });
+
+    const struggleDetected =
+      wrongSoFar >= 2 ||
+      durationSeconds >= 60 ||
+      currentEmotion === 'Anxious' ||
+      currentEmotion === 'Confused' ||
+      currentEmotion === 'Frustrated' ||
+      currentEmotion === 'Sad';
+
+    const struggleNudge = struggleDetected
+      ? 'Sepertinya kamu kesulitan, coba selesaikan ini:'
+      : undefined;
+
+    // If struggling, automatically lower difficulty. Otherwise keep/raise based on fuzzy decision.
+    const targetDifficulty = struggleDetected ? 'EASY' : baseDifficulty;
+
+    const quizQuestion = await generateCalculationQuizQuestion(
       material.content,
       currentEmotion,
-      learningStyle
+      learningStyle,
+      targetDifficulty,
+      {
+        questionIndex,
+        avoidQuestions: previousQuestions,
+      }
     );
 
     // Log successful request
@@ -105,6 +174,10 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         ...quizQuestion,
+        questionIndex,
+        questionType: 'CALC',
+        targetDifficulty,
+        struggleNudge,
         materialId: material.id,
         materialTitle: material.title,
         materialDifficulty: material.difficulty,

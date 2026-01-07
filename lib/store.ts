@@ -56,6 +56,9 @@ interface EmotionStore {
   
   // User State
   user: User | null;
+
+  // Hydration State
+  hasHydrated: boolean;
   
   // Actions - Emotion
   setEmotion: (emotion: EmotionData) => void;
@@ -67,6 +70,9 @@ interface EmotionStore {
   
   // Actions - User
   setUser: (user: User | null) => void;
+
+  // Actions - Hydration
+  setHasHydrated: (hasHydrated: boolean) => void;
   
   // Utility
   getEmotionTrend: () => EmotionLabel | null; // Get most frequent emotion in history
@@ -86,6 +92,7 @@ export const useEmotionStore = create<EmotionStore>()(
         isCamActive: false,
         isModelLoaded: false,
         user: null,
+        hasHydrated: false,
 
         // Set new emotion and update history
         setEmotion: (emotion: EmotionData) =>
@@ -125,6 +132,11 @@ export const useEmotionStore = create<EmotionStore>()(
             user,
           }),
 
+        setHasHydrated: (hasHydrated: boolean) =>
+          set({
+            hasHydrated,
+          }),
+
         // Get emotion trend from history (most frequent emotion)
         getEmotionTrend: () => {
           const history = get().emotionHistory;
@@ -151,6 +163,9 @@ export const useEmotionStore = create<EmotionStore>()(
           // Only persist user data, not emotion/camera state
           user: state.user,
         }),
+        onRehydrateStorage: () => (state) => {
+          state?.setHasHydrated(true);
+        },
       }
     ),
     {
@@ -173,6 +188,9 @@ export const useCameraActive = () =>
 
 // Hook to get user data
 export const useUser = () => useEmotionStore((state) => state.user);
+
+// Hook to check when persisted state has loaded
+export const useHasHydrated = () => useEmotionStore((state) => state.hasHydrated);
 
 // Hook to check if student is experiencing anxiety (for adaptive UI)
 export const useIsAnxious = () =>

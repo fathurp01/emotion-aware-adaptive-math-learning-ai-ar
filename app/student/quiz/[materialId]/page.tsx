@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useCurrentEmotion, useUser } from '@/lib/store';
+import { useCurrentEmotion, useHasHydrated, useUser } from '@/lib/store';
 import { Send, Loader2, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -18,6 +18,11 @@ interface QuizQuestion {
   expectedAnswer: string;
   hint?: string;
   supportiveMessage?: string;
+  difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
+  questionIndex?: number;
+  questionType?: 'RECAP' | 'CALC';
+  targetDifficulty?: 'EASY' | 'MEDIUM' | 'HARD';
+  struggleNudge?: string;
 }
 
 interface Message {
@@ -33,6 +38,7 @@ export default function QuizPage() {
   const router = useRouter();
   const params = useParams();
   const user = useUser();
+  const hasHydrated = useHasHydrated();
   const currentEmotion = useCurrentEmotion();
   const materialId = params.materialId as string;
 
@@ -41,7 +47,17 @@ export default function QuizPage() {
   const [userAnswer, setUserAnswer] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [questionStartAt, setQuestionStartAt] = useState<number | null>(null);
+  const [wrongCount, setWrongCount] = useState(0);
+  const [totalScore, setTotalScore] = useState(0);
+  const [answeredCount, setAnsweredCount] = useState(0);
   const [material, setMaterial] = useState<any>(null);
+  const [shownStruggleNudge, setShownStruggleNudge] = useState(false);
+  const [previousQuestions, setPreviousQuestions] = useState<string[]>([]);
+
+  const TOTAL_QUESTIONS = 6;
 
   const fetchMaterial = useCallback(async () => {
     try {
@@ -56,25 +72,39 @@ export default function QuizPage() {
   }, [materialId]);
 
   useEffect(() => {
+    if (!hasHydrated) return;
     if (!user) {
       router.push('/auth/login');
       return;
     }
 
     fetchMaterial();
-  }, [user, router, fetchMaterial]);
+  }, [hasHydrated, user, router, fetchMaterial]);
 
   const startQuiz = async () => {
     if (!user) return;
 
     setIsLoading(true);
     try {
+      // Reset session state
+      setMessages([]);
+      setCurrentQuestion(null);
+      setIsFinished(false);
+      setWrongCount(0);
+      setTotalScore(0);
+      setAnsweredCount(0);
+      setQuestionIndex(1);
+      setQuestionStartAt(null);
+      setShownStruggleNudge(false);
+      setPreviousQuestions([]);
+
       const res = await fetch('/api/quiz/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           materialId,
           userId: user.id,
+          questionIndex: 1,
           currentEmotion: currentEmotion?.label || 'Neutral',
           confidence: currentEmotion?.confidence ?? 1.0,
         }),
@@ -86,6 +116,8 @@ export default function QuizPage() {
       const question: QuizQuestion = payload?.data;
       setCurrentQuestion(question);
       setIsStarted(true);
+      setQuestionStartAt(Date.now());
+      if (question?.question) setPreviousQuestions([question.question]);
 
       const botMessage: Message = {
         id: Date.now().toString(),
@@ -112,7 +144,10 @@ export default function QuizPage() {
   };
 
   const submitAnswer = async () => {
-    if (!userAnswer.trim() || !currentQuestion || !user) return;
+    if (!userAnswer.trim() || !currentQuestion || !user || isFinished) return;
+
+    const startedAt = questionStartAt ?? Date.now();
+    const durationSeconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -132,9 +167,12 @@ export default function QuizPage() {
         body: JSON.stringify({
           userId: user.id,
           materialId,
+          questionIndex: currentQuestion.questionIndex ?? questionIndex,
+          questionType: currentQuestion.questionType,
+          durationSeconds,
           question: currentQuestion.question,
           userAnswer: userAnswer,
-          expectedAnswer: currentQuestion.expectedAnswer,
+          expectedAnswer: String(currentQuestion.expectedAnswer),
           currentEmotion: currentEmotion?.label || 'Neutral',
         }),
       });
@@ -155,30 +193,46 @@ export default function QuizPage() {
 
       setMessages((prev) => [...prev, feedbackMessage]);
 
-      // Log quiz to database
-      await fetch('/api/student/quiz-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          materialId,
-          question: currentQuestion.question,
-          userAnswer,
-          aiFeedback: feedback.feedback,
-          score: feedback.score,
-          detectedEmotion: currentEmotion?.label || 'Neutral',
-        }),
-      });
+      // Update session stats
+      const isCorrect = Boolean(feedback.isCorrect);
+      const scoreNum = typeof feedback.score === 'number' ? feedback.score : 0;
+      setTotalScore((s) => s + scoreNum);
+      setAnsweredCount((c) => c + 1);
+      if (!isCorrect) setWrongCount((w) => w + 1);
+
+      const nextIndex = (currentQuestion.questionIndex ?? questionIndex) + 1;
+      const nextWrong = (isCorrect ? wrongCount : wrongCount + 1);
+      const nextAnswered = answeredCount + 1;
+
+      // Stop after TOTAL_QUESTIONS answered
+      if (nextAnswered >= TOTAL_QUESTIONS) {
+        setIsFinished(true);
+        setIsLoading(false);
+        setCurrentQuestion(null);
+        return;
+      }
 
       // Generate next question after 2 seconds
       setTimeout(async () => {
         try {
+          const avoidList = [
+            ...previousQuestions,
+            currentQuestion?.question ? currentQuestion.question : '',
+          ]
+            .map((q) => q.trim())
+            .filter(Boolean)
+            .slice(-6);
+
           const nextRes = await fetch('/api/quiz/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               materialId,
               userId: user.id,
+              questionIndex: nextIndex,
+              lastDurationSeconds: durationSeconds,
+              wrongCount: nextWrong,
+              previousQuestions: avoidList,
               currentEmotion: currentEmotion?.label || 'Neutral',
               confidence: currentEmotion?.confidence ?? 1.0,
             }),
@@ -188,6 +242,22 @@ export default function QuizPage() {
             const nextPayload = await nextRes.json();
             const nextQuestion: QuizQuestion = nextPayload?.data;
             setCurrentQuestion(nextQuestion);
+            setQuestionIndex(nextIndex);
+            setQuestionStartAt(Date.now());
+            if (nextQuestion?.question) {
+              setPreviousQuestions((prev) => [...prev, nextQuestion.question].slice(-6));
+            }
+
+            if (!shownStruggleNudge && nextQuestion.struggleNudge) {
+              setShownStruggleNudge(true);
+              const nudgeMessage: Message = {
+                id: `${Date.now()}-nudge`,
+                type: 'bot',
+                content: nextQuestion.struggleNudge,
+                timestamp: new Date(),
+              };
+              setMessages((prev) => [...prev, nudgeMessage]);
+            }
 
             const nextBotMessage: Message = {
               id: Date.now().toString(),
@@ -279,6 +349,16 @@ export default function QuizPage() {
           </div>
         ) : (
           <>
+            {/* Progress */}
+            <div className="mb-4 flex items-center justify-between text-sm text-gray-600">
+              <div>
+                Soal {Math.min(answeredCount + 1, TOTAL_QUESTIONS)}/{TOTAL_QUESTIONS}
+              </div>
+              <div>
+                Skor sementara: {answeredCount > 0 ? Math.round(totalScore / answeredCount) : 0}
+              </div>
+            </div>
+
             {/* Chat Messages */}
             <div className="bg-white rounded-lg shadow-sm border mb-4">
               <div className="p-6 max-h-[60vh] overflow-y-auto space-y-4">
@@ -350,30 +430,53 @@ export default function QuizPage() {
             </div>
 
             {/* Input Area */}
-            <div className="bg-white rounded-lg shadow-sm border p-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Ketik jawabanmu di sini..."
-                  disabled={isLoading}
-                  className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-                <button
-                  onClick={submitAnswer}
-                  disabled={isLoading || !userAnswer.trim()}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <Send className="w-5 h-5" />
-                  )}
-                </button>
+            {!isFinished ? (
+              <div className="bg-white rounded-lg shadow-sm border p-4">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={userAnswer}
+                    onChange={(e) => setUserAnswer(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Ketik jawabanmu di sini..."
+                    disabled={isLoading}
+                    className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <button
+                    onClick={submitAnswer}
+                    disabled={isLoading || !userAnswer.trim()}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <h3 className="text-lg font-bold text-gray-900">Quiz Selesai</h3>
+                <p className="mt-1 text-gray-700">
+                  Skor akhir: <span className="font-semibold">{answeredCount > 0 ? Math.round(totalScore / answeredCount) : 0}</span>/100
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    onClick={startQuiz}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Ambil Ulang Quiz
+                  </button>
+                  <Link
+                    href={`/student/learn/${materialId}`}
+                    className="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Belajar Ulang
+                  </Link>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

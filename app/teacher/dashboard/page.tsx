@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/lib/store';
+import { useHasHydrated, useUser } from '@/lib/store';
 import { Users, AlertTriangle, BookOpen, Plus, LogOut } from 'lucide-react';
 import Link from 'next/link';
 
@@ -28,11 +28,13 @@ interface Student {
 export default function TeacherDashboard() {
   const router = useRouter();
   const user = useUser();
+  const hasHydrated = useHasHydrated();
 
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!hasHydrated) return;
     if (!user) {
       router.push('/auth/login');
       return;
@@ -44,7 +46,7 @@ export default function TeacherDashboard() {
     }
 
     fetchStudents();
-  }, [user, router]);
+  }, [hasHydrated, user, router]);
 
   const fetchStudents = async () => {
     try {

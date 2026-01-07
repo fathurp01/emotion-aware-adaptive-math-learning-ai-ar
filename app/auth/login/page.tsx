@@ -6,15 +6,17 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useEmotionStore } from '@/lib/store';
+import { useEmotionStore, useHasHydrated, useUser } from '@/lib/store';
 import { Brain, Loader2, LogIn, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const setUser = useEmotionStore((state) => state.setUser);
+  const user = useUser();
+  const hasHydrated = useHasHydrated();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -22,6 +24,18 @@ export default function LoginPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+    if (!user) return;
+
+    if (user.role === 'STUDENT') {
+      if (!user.learningStyle) router.replace('/student/onboarding');
+      else router.replace('/student/dashboard');
+    } else {
+      router.replace('/teacher/dashboard');
+    }
+  }, [hasHydrated, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

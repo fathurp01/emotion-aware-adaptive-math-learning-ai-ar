@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/lib/store';
+import { useHasHydrated, useUser } from '@/lib/store';
 import { ArrowLeft, Upload, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -21,6 +21,7 @@ interface Chapter {
 export default function CreateMaterialPage() {
   const router = useRouter();
   const user = useUser();
+  const hasHydrated = useHasHydrated();
 
   const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
 
@@ -37,6 +38,7 @@ export default function CreateMaterialPage() {
   });
 
   useEffect(() => {
+    if (!hasHydrated) return;
     if (!user) {
       router.push('/auth/login');
       return;
@@ -61,7 +63,7 @@ export default function CreateMaterialPage() {
         console.error('Error fetching chapters:', error);
       }
     })();
-  }, [user, router]);
+  }, [hasHydrated, user, router]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

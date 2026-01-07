@@ -10,6 +10,7 @@
 
 import { prisma } from './db';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { isMistralConfigured, mistralGenerateText } from './mistral';
 
 // Color codes for terminal output
 const colors = {
@@ -41,6 +42,10 @@ export interface StartupCheckResult {
 function getGeminiModelName(): string {
   // Default to a broadly available model family; override with GEMINI_MODEL if needed.
   return (process.env.GEMINI_MODEL || 'gemini-2.0-flash').trim();
+}
+
+function getMistralModelName(): string {
+  return (process.env.MISTRAL_MODEL || 'mistral-small-latest').trim();
 }
 
 async function listGeminiModels(apiKey: string): Promise<Array<{ name: string; supportedGenerationMethods?: string[] }>> {
@@ -236,16 +241,65 @@ async function checkGeminiAI(): Promise<StartupCheckResult> {
   }
 }
 
+async function checkMistralAI(): Promise<StartupCheckResult> {
+  try {
+    log.info('Checking Mistral AI configuration...');
+
+    if (!isMistralConfigured()) {
+      return {
+        status: 'warning',
+        component: 'Mistral AI',
+        message: 'Mistral API key not configured (optional fallback)',
+      };
+    }
+
+    log.success('Mistral API key configured');
+
+    const skipGenerateTest = /^(1|true|yes)$/i.test(String(process.env.MISTRAL_HEALTHCHECK_SKIP_GENERATE || ''));
+    if (skipGenerateTest) {
+      log.info('Skipping Mistral generate test (MISTRAL_HEALTHCHECK_SKIP_GENERATE enabled)');
+      return {
+        status: 'success',
+        component: 'Mistral AI',
+        message: 'API key is configured (generate test skipped)',
+        details: { configuredModel: getMistralModelName() },
+      };
+    }
+
+    log.info('Testing Mistral model connection...');
+    const text = await mistralGenerateText('Test connection. Respond with "OK".');
+    if (text) {
+      log.success('Mistral AI model is responsive');
+      log.info(`  Model: ${getMistralModelName()}`);
+      return {
+        status: 'success',
+        component: 'Mistral AI',
+        message: 'AI model is ready',
+        details: {
+          model: getMistralModelName(),
+          testResponse: text.substring(0, 50),
+        },
+      };
+    }
+
+    throw new Error('Empty response from Mistral');
+  } catch (error: any) {
+    log.error(`Mistral AI check failed: ${error.message}`);
+    return {
+      status: 'error',
+      component: 'Mistral AI',
+      message: `AI model unavailable: ${error.message}`,
+    };
+  }
+}
+
 /**
  * Check environment variables
  */
 function checkEnvironment(): StartupCheckResult {
   log.info('Checking environment configuration...');
   
-  const requiredEnvVars = [
-    'DATABASE_URL',
-    'GEMINI_API_KEY',
-  ];
+  const requiredEnvVars = ['DATABASE_URL'];
   
   const missingVars: string[] = [];
   const presentVars: string[] = [];
@@ -256,6 +310,16 @@ function checkEnvironment(): StartupCheckResult {
     } else {
       missingVars.push(varName);
     }
+  }
+
+  // AI provider: require at least one key (Gemini or Mistral)
+  const hasGemini = Boolean(process.env.GEMINI_API_KEY);
+  const hasMistral = Boolean(process.env.MISTRAL_API_KEY);
+  if (!hasGemini && !hasMistral) {
+    missingVars.push('GEMINI_API_KEY or MISTRAL_API_KEY');
+  } else {
+    if (hasGemini) presentVars.push('GEMINI_API_KEY');
+    if (hasMistral) presentVars.push('MISTRAL_API_KEY');
   }
   
   if (missingVars.length > 0) {
@@ -362,6 +426,9 @@ export async function runStartupChecks(): Promise<StartupCheckResult[]> {
   // Gemini AI check
   log.section('AI Model Initialization');
   results.push(await checkGeminiAI());
+
+  // Mistral AI check (fallback)
+  results.push(await checkMistralAI());
   
   // TensorFlow check
   log.section('Emotion Detection System');

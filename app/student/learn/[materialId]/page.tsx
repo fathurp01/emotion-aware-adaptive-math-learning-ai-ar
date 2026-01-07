@@ -18,7 +18,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { useCurrentEmotion, useUser } from '@/lib/store';
@@ -63,6 +63,20 @@ export default function LearnMaterialPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [adaptiveConfig, setAdaptiveConfig] = useState<FuzzyOutputs | null>(null);
   const [showBreathingExercise, setShowBreathingExercise] = useState(false);
+
+  // Easy-Read mode stabilization to avoid flicker.
+  const EASY_READ_DEBOUNCE_ON_MS = 4000;
+  const EASY_READ_DEBOUNCE_OFF_MS = 6000;
+  const EASY_READ_MIN_HOLD_MS = 60000;
+
+  const [easyReadPreference, setEasyReadPreference] = useState<'auto' | 'on' | 'off'>('auto');
+  const [easyReadEnabled, setEasyReadEnabled] = useState(false);
+  const [easyReadAutoReason, setEasyReadAutoReason] = useState<string | null>(null);
+
+  const lastAutoEnabledAtRef = useRef<number>(0);
+  const lastEncouragementAtRef = useRef<number>(0);
+  const activationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deactivationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ====================================
   // DATA FETCHING
@@ -113,7 +127,64 @@ export default function LearnMaterialPage() {
       quizScore: 50, // Default, will be updated after quiz
     });
 
-    setAdaptiveConfig(config);
+    // Stabilize "Easy-Read" and related assists so UI doesn't flip-flop.
+    const shouldSuggestEasyRead = config.simplifyText || config.showHint;
+
+    // Manual overrides
+    if (easyReadPreference === 'on') {
+      if (!easyReadEnabled) {
+        setEasyReadEnabled(true);
+      }
+    } else if (easyReadPreference === 'off') {
+      if (easyReadEnabled) {
+        setEasyReadEnabled(false);
+      }
+    } else {
+      // Auto mode with debounce + minimum hold
+      const now = Date.now();
+
+      if (shouldSuggestEasyRead) {
+        if (deactivationTimerRef.current) {
+          clearTimeout(deactivationTimerRef.current);
+          deactivationTimerRef.current = null;
+        }
+
+        if (!easyReadEnabled && !activationTimerRef.current) {
+          activationTimerRef.current = setTimeout(() => {
+            activationTimerRef.current = null;
+            setEasyReadEnabled(true);
+            setEasyReadAutoReason(currentEmotion.label);
+            lastAutoEnabledAtRef.current = Date.now();
+            toast.info('Easy-Read Mode diaktifkan', {
+              description: 'Kami mengaktifkan tampilan mudah-baca karena kamu terlihat kebingungan/tertekan.',
+              duration: 4000,
+            });
+          }, EASY_READ_DEBOUNCE_ON_MS);
+        }
+      } else {
+        if (activationTimerRef.current) {
+          clearTimeout(activationTimerRef.current);
+          activationTimerRef.current = null;
+        }
+
+        if (easyReadEnabled && !deactivationTimerRef.current) {
+          const heldFor = now - (lastAutoEnabledAtRef.current || now);
+          const remainingHold = Math.max(0, EASY_READ_MIN_HOLD_MS - heldFor);
+          deactivationTimerRef.current = setTimeout(() => {
+            deactivationTimerRef.current = null;
+            setEasyReadEnabled(false);
+            setEasyReadAutoReason(null);
+          }, remainingHold + EASY_READ_DEBOUNCE_OFF_MS);
+        }
+      }
+    }
+
+    setAdaptiveConfig({
+      ...config,
+      // Keep assist UI consistent while Easy-Read is held on.
+      simplifyText: easyReadEnabled,
+      showHint: easyReadEnabled ? true : config.showHint,
+    });
 
     // Show breathing exercise prompt if anxious
     if (config.showBreathingExercise && !showBreathingExercise) {
@@ -126,13 +197,35 @@ export default function LearnMaterialPage() {
 
     // Show encouragement message
     if (config.showEncouragement) {
-      const message = getEncouragementMessage(currentEmotion.label);
-      toast(message, {
-        duration: 4000,
-        icon: '💪',
-      });
+      const now = Date.now();
+      // Rate-limit encouragement to avoid spamming.
+      if (now - lastEncouragementAtRef.current > 30000) {
+        lastEncouragementAtRef.current = now;
+        const message = getEncouragementMessage(currentEmotion.label);
+        toast(message, {
+          duration: 4000,
+          icon: '💪',
+        });
+      }
     }
-  }, [currentEmotion, showBreathingExercise]);
+
+    return () => {
+      // Clean timers when emotion changes/unmounts
+      if (activationTimerRef.current) {
+        clearTimeout(activationTimerRef.current);
+        activationTimerRef.current = null;
+      }
+      if (deactivationTimerRef.current) {
+        clearTimeout(deactivationTimerRef.current);
+        deactivationTimerRef.current = null;
+      }
+    };
+  }, [
+    currentEmotion,
+    showBreathingExercise,
+    easyReadEnabled,
+    easyReadPreference,
+  ]);
 
   // ====================================
   // HANDLERS
@@ -264,6 +357,42 @@ export default function LearnMaterialPage() {
 
             {/* Adaptive Content */}
             <div className="bg-white rounded-lg shadow-sm p-8 border">
+              {/* Easy-Read Status Banner */}
+              {(easyReadEnabled || easyReadPreference !== 'auto') && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start justify-between gap-3">
+                  <div className="text-sm text-blue-900">
+                    <div className="font-semibold">Easy-Read Mode</div>
+                    <div className="mt-1 text-blue-800">
+                      {easyReadEnabled
+                        ? `Aktif${easyReadPreference === 'on' ? ' (manual)' : easyReadAutoReason ? ` (otomatis: ${easyReadAutoReason})` : ' (otomatis)'}.`
+                        : 'Nonaktif (manual).'}
+                    </div>
+                    {easyReadEnabled && easyReadPreference === 'auto' && (
+                      <div className="mt-1 text-xs text-blue-700">
+                        Mode ini dibuat stabil agar tidak berubah-ubah setiap detik.
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0">
+                    {easyReadEnabled ? (
+                      <button
+                        onClick={() => setEasyReadPreference('off')}
+                        className="px-3 py-2 bg-white border border-blue-200 rounded-md text-sm text-blue-900 hover:bg-blue-100 transition-colors"
+                      >
+                        Kembalikan
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setEasyReadPreference('auto')}
+                        className="px-3 py-2 bg-white border border-blue-200 rounded-md text-sm text-blue-900 hover:bg-blue-100 transition-colors"
+                      >
+                        Kembali ke Auto
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <AdaptiveText
                 content={material.content}
                 isSimplified={adaptiveConfig?.simplifyText || false}
@@ -320,10 +449,30 @@ export default function LearnMaterialPage() {
                   <EmotionCamera
                     userId={user.id}
                     materialId={materialId}
-                    showVideo={false}
+                    showVideo={true}
                     autoLog={true}
+                    autoStart={true}
                   />
                 )}
+                <div className="mt-4 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Detected class</span>
+                    <span className="font-medium text-gray-900">
+                      {currentEmotion ? currentEmotion.label : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-gray-600">Confidence</span>
+                    <span className="font-medium text-gray-900">
+                      {currentEmotion ? `${Math.round(currentEmotion.confidence * 100)}%` : '—'}
+                    </span>
+                  </div>
+                  {!currentEmotion && (
+                    <p className="mt-2 text-xs text-gray-500">
+                      Start camera untuk mulai deteksi. Jika tidak terdeteksi, pastikan wajah terlihat jelas.
+                    </p>
+                  )}
+                </div>
                 <p className="text-xs text-gray-500 mt-4">
                   We use your emotion to adapt the learning experience. Your privacy is
                   protected.

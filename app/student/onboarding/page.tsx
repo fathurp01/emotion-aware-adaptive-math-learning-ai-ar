@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/lib/store';
+import { useEmotionStore, useUser } from '@/lib/store';
 import { learningStyleQuestionnaire } from '@/utils/learningStyleAlgo';
 import type { QuestionnaireAnswers, LearningStyle } from '@/utils/learningStyleAlgo';
 import { Brain, CheckCircle2, Loader2 } from 'lucide-react';
@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 export default function OnboardingPage() {
   const router = useRouter();
   const user = useUser();
+  const setUser = useEmotionStore((state) => state.setUser);
   
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<QuestionnaireAnswers>({});
@@ -63,7 +64,17 @@ export default function OnboardingPage() {
         throw new Error(data.error || 'Failed to save learning style');
       }
 
-      toast.success(`Gaya belajar Anda: ${data.learningStyle}`);
+      const learningStyle: LearningStyle | undefined = data?.data?.learningStyle;
+      const updatedUser = data?.data?.user;
+
+      if (!learningStyle || !updatedUser) {
+        throw new Error('Unexpected response from server');
+      }
+
+      // Update local session so other pages (quiz, dashboard) instantly see the learning style
+      setUser(updatedUser);
+
+      toast.success(`Gaya belajar Anda: ${learningStyle}`);
       router.push('/student/dashboard');
     } catch (error) {
       console.error('Onboarding error:', error);

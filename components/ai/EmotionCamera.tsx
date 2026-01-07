@@ -27,7 +27,7 @@ import Webcam from 'react-webcam';
 import * as tf from '@tensorflow/tfjs';
 import { useEmotionStore } from '@/lib/store';
 import type { EmotionLabel } from '@/lib/store';
-import { Camera, CameraOff, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
   initMediaPipeEmotionFallback,
   detectEmotionWithMediaPipe,
@@ -43,6 +43,7 @@ interface EmotionCameraProps {
   onEmotionDetected?: (emotion: EmotionLabel, confidence: number) => void;
   autoLog?: boolean; // Auto-save to database (default: true)
   showVideo?: boolean; // Show webcam feed (default: false for privacy)
+  autoStart?: boolean; // Start camera automatically when ready (default: false)
   className?: string;
 }
 
@@ -56,11 +57,12 @@ export default function EmotionCamera({
   onEmotionDetected,
   autoLog = true,
   showVideo = false,
+  autoStart = true,
   className = '',
 }: EmotionCameraProps) {
   // Zustand store
-  const { isCamActive, toggleCamera, setEmotion, setModelLoaded, isModelLoaded } =
-    useEmotionStore();
+  const { isCamActive, toggleCamera, setEmotion, setModelLoaded, isModelLoaded } = useEmotionStore();
+  const currentEmotion = useEmotionStore((state) => state.currentEmotion);
 
   // Refs
   const webcamRef = useRef<Webcam>(null);
@@ -73,6 +75,10 @@ export default function EmotionCamera({
   // Local state
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState<string | null>(null);
+  const [selectedVideoDeviceLabel, setSelectedVideoDeviceLabel] = useState<string | null>(null);
+  const [detectorMode, setDetectorMode] = useState<'tfjs' | 'mediapipe' | 'none'>('none');
+  const [lastFaceDetectedAt, setLastFaceDetectedAt] = useState<number | null>(null);
 
   // ====================================
   // MODEL LOADING
@@ -98,13 +104,24 @@ export default function EmotionCamera({
   const initMediaPipeFallback = useCallback(async () => {
     const wasmBaseUrl = process.env.NEXT_PUBLIC_MEDIAPIPE_WASM_BASE_URL;
     const modelAssetPath = process.env.NEXT_PUBLIC_MEDIAPIPE_FACE_LANDMARKER_MODEL_URL;
-    await initMediaPipeEmotionFallback({
-      wasmBaseUrl: wasmBaseUrl || undefined,
-      modelAssetPath: modelAssetPath || undefined,
-    });
-    detectorModeRef.current = 'mediapipe';
-    setModelLoaded(true);
-    console.log('✅ MediaPipe fallback initialized (blendshape-based)');
+    try {
+      await initMediaPipeEmotionFallback({
+        wasmBaseUrl: wasmBaseUrl || undefined,
+        modelAssetPath: modelAssetPath || undefined,
+      });
+      detectorModeRef.current = 'mediapipe';
+      setDetectorMode('mediapipe');
+      setModelLoaded(true);
+      console.log('✅ MediaPipe fallback initialized (blendshape-based)');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown MediaPipe init error';
+      console.error('❌ MediaPipe fallback init failed:', err);
+      setError(msg);
+      setModelLoaded(false);
+      detectorModeRef.current = 'none';
+      setDetectorMode('none');
+      throw err;
+    }
   }, [setModelLoaded]);
 
   const loadModel = useCallback(async () => {
@@ -153,6 +170,7 @@ export default function EmotionCamera({
       }
 
       detectorModeRef.current = 'tfjs';
+      setDetectorMode('tfjs');
       setModelLoaded(true);
 
       console.log('✅ Emotion model loaded successfully');
@@ -174,6 +192,7 @@ export default function EmotionCamera({
         );
         setModelLoaded(false);
         detectorModeRef.current = 'none';
+        setDetectorMode('none');
       }
     } finally {
       setIsLoading(false);
@@ -242,6 +261,7 @@ export default function EmotionCamera({
         if (mp) {
           emotionLabel = mp.label;
           confidence = mp.confidence;
+          setLastFaceDetectedAt(Date.now());
         }
       }
 
@@ -253,28 +273,23 @@ export default function EmotionCamera({
         return;
       }
 
-      // Only update if confidence is above threshold
-      // MediaPipe fallback uses heuristics; use slightly lower threshold.
-      const threshold = detectorModeRef.current === 'mediapipe' ? 0.35 : 0.5;
-      if (confidence > threshold) {
-        const emotionData = {
-          label: emotionLabel,
-          confidence,
-          timestamp: Date.now(),
-        };
+      // Always update UI state so the user can see class + confidence,
+      // even when confidence is low (important for research UX).
+      const emotionData = {
+        label: emotionLabel,
+        confidence,
+        timestamp: Date.now(),
+      };
 
-        // Update Zustand store
-        setEmotion(emotionData);
+      setEmotion(emotionData);
+      onEmotionDetected?.(emotionLabel, confidence);
 
-        // Callback
-        onEmotionDetected?.(emotionLabel, confidence);
-
-        // Auto-log to database (every 5 seconds to reduce load)
-        const now = Date.now();
-        if (autoLog && now - lastLogTimeRef.current > 5000) {
-          await logEmotionToDatabase(userId, materialId, emotionLabel, confidence);
-          lastLogTimeRef.current = now;
-        }
+      // Only auto-log when confidence is above threshold (reduce noisy logs).
+      const threshold = detectorModeRef.current === 'mediapipe' ? 0.2 : 0.35;
+      const now = Date.now();
+      if (autoLog && confidence > threshold && now - lastLogTimeRef.current > 5000) {
+        await logEmotionToDatabase(userId, materialId, emotionLabel, confidence);
+        lastLogTimeRef.current = now;
       }
     } catch (err) {
       console.error('Error detecting emotion:', err);
@@ -300,12 +315,78 @@ export default function EmotionCamera({
   // LIFECYCLE
   // ====================================
 
+  const pickPreferredVideoInput = async (): Promise<MediaDeviceInfo | null> => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) {
+      return null;
+    }
+
+    let devices = await navigator.mediaDevices.enumerateDevices();
+
+    // Labels are often empty until permission is granted.
+    if (devices.every((d) => !d.label)) {
+      try {
+        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        tempStream.getTracks().forEach((t) => t.stop());
+        devices = await navigator.mediaDevices.enumerateDevices();
+      } catch {
+        // ignore; we'll fall back to default device selection
+      }
+    }
+
+    const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+    if (videoInputs.length === 0) return null;
+
+    const preferRe = /(integrated|built-?in|internal)/i;
+    const avoidRe = /(phone|continuity|droidcam|ivcam|epoccam|virtual|obs|snap|link)/i;
+
+    const preferred = videoInputs.find((d) => preferRe.test(d.label) && !avoidRe.test(d.label));
+    if (preferred) return preferred;
+
+    const nonAvoid = videoInputs.find((d) => !avoidRe.test(d.label));
+    return nonAvoid || videoInputs[0];
+  };
+
+  // Pick a stable camera device when camera is enabled.
+  useEffect(() => {
+    if (!isCamActive) {
+      setSelectedVideoDeviceId(null);
+      setSelectedVideoDeviceLabel(null);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const device = await pickPreferredVideoInput();
+        if (cancelled) return;
+        setSelectedVideoDeviceId(device?.deviceId || null);
+        setSelectedVideoDeviceLabel(device?.label || null);
+      } catch {
+        // Keep default selection if anything fails
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isCamActive]);
+
   // Load model on mount
   useEffect(() => {
     if (!isModelLoaded) {
       loadModel();
     }
   }, [isModelLoaded, loadModel]);
+
+  // Auto-start camera once model is ready.
+  useEffect(() => {
+    if (!autoStart) return;
+    if (!isModelLoaded) return;
+    if (isCamActive) return;
+    toggleCamera();
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, isModelLoaded, isCamActive]);
 
   // Start/stop detection loop
   useEffect(() => {
@@ -321,56 +402,18 @@ export default function EmotionCamera({
   }, [isCamActive, isModelLoaded, detectEmotion]);
 
   // ====================================
-  // HANDLERS
-  // ====================================
-
-  const handleToggleCamera = () => {
-    if (!isModelLoaded && !isCamActive) {
-      setError('Model not loaded yet. Please wait...');
-      return;
-    }
-    toggleCamera();
-    setError(null);
-  };
-
-  // ====================================
   // RENDER
   // ====================================
 
   return (
     <div className={`emotion-camera-container ${className}`}>
-      {/* Toggle Button */}
-      <button
-        onClick={handleToggleCamera}
-        disabled={isLoading}
-        className={`
-          flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all
-          ${
-            isCamActive
-              ? 'bg-red-500 hover:bg-red-600 text-white'
-              : 'bg-blue-500 hover:bg-blue-600 text-white'
-          }
-          disabled:opacity-50 disabled:cursor-not-allowed
-        `}
-        aria-label={isCamActive ? 'Turn off camera' : 'Turn on camera'}
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            Loading Model...
-          </>
-        ) : isCamActive ? (
-          <>
-            <CameraOff className="w-5 h-5" />
-            Stop Camera
-          </>
-        ) : (
-          <>
-            <Camera className="w-5 h-5" />
-            Start Camera
-          </>
-        )}
-      </button>
+      {/* Camera is mandatory; no start/stop controls */}
+      {isLoading && (
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Loading emotion model…
+        </div>
+      )}
 
       {/* Error Message */}
       {error && (
@@ -394,6 +437,14 @@ export default function EmotionCamera({
               width: 640,
               height: 480,
               facingMode: 'user',
+              ...(selectedVideoDeviceId
+                ? { deviceId: { exact: selectedVideoDeviceId } }
+                : null),
+            }}
+            key={selectedVideoDeviceId || 'default-camera'}
+            onUserMediaError={(err) => {
+              console.error('Webcam permission / device error:', err);
+              setError('Failed to access camera. Please check browser permission and camera device.');
             }}
             className="w-full h-auto"
           />
@@ -403,6 +454,24 @@ export default function EmotionCamera({
             <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
             Recording
           </div>
+
+          {/* Detection Status Overlay */}
+          <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm text-gray-900 px-3 py-2 rounded-lg text-xs border">
+            <div className="font-semibold">Detection</div>
+            <div className="mt-0.5 text-gray-700">Mode: {detectorMode}</div>
+            <div className="mt-0.5">
+              Class: {currentEmotion ? currentEmotion.label : '—'}
+            </div>
+            <div>
+              Confidence:{' '}
+              {currentEmotion ? `${Math.round(currentEmotion.confidence * 100)}%` : '—'}
+            </div>
+            {detectorMode === 'mediapipe' && (
+              <div className="mt-0.5 text-gray-600">
+                Face: {lastFaceDetectedAt && Date.now() - lastFaceDetectedAt < 5000 ? 'detected' : 'not detected'}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -411,6 +480,7 @@ export default function EmotionCamera({
         <div className="mt-2 text-sm text-gray-600 flex items-center gap-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           Camera active (hidden for privacy)
+          {selectedVideoDeviceLabel ? `- ${selectedVideoDeviceLabel}` : ''}
         </div>
       )}
     </div>

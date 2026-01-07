@@ -31,6 +31,12 @@ import type { EmotionLabel } from '@/lib/store';
 
 export type UITheme = 'CALM' | 'DEFAULT' | 'ENERGETIC';
 export type DifficultyAdjustment = 'EASIER' | 'SAME' | 'HARDER';
+export type QuizDifficulty = 'EASY' | 'MEDIUM' | 'HARD';
+
+export interface QuizDifficultyInputs {
+  durationSeconds: number; // time to answer the last question
+  wrongCount: number; // cumulative wrong answers so far
+}
 
 export interface FuzzyInputs {
   emotion: EmotionLabel;
@@ -258,6 +264,83 @@ export function applyFuzzyLogic(inputs: FuzzyInputs): FuzzyOutputs {
   }
 
   return outputs;
+}
+
+// ====================================
+// QUIZ DIFFICULTY (FUZZY)
+// ====================================
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * Fuzzify answer duration (seconds)
+ * FAST: 0-20
+ * MEDIUM: 15-60
+ * SLOW: 45+
+ */
+function fuzzifyDurationSeconds(durationSeconds: number): {
+  fast: number;
+  medium: number;
+  slow: number;
+} {
+  const t = clamp(durationSeconds, 0, 300);
+
+  // Triangular-ish membership
+  const fast = t <= 20 ? 1 - t / 20 : 0;
+  const medium =
+    t >= 15 && t <= 60
+      ? t <= 35
+        ? (t - 15) / 20
+        : (60 - t) / 25
+      : 0;
+  const slow = t >= 45 ? clamp((t - 45) / 60, 0, 1) : 0;
+
+  return { fast, medium, slow };
+}
+
+/**
+ * Fuzzify wrong count (cumulative)
+ * LOW: 0-1
+ * MEDIUM: 1-3
+ * HIGH: 3+
+ */
+function fuzzifyWrongCount(wrongCount: number): {
+  low: number;
+  medium: number;
+  high: number;
+} {
+  const w = clamp(wrongCount, 0, 10);
+  const low = w <= 1 ? 1 - w / 1 : 0;
+  const medium =
+    w >= 1 && w <= 3
+      ? w <= 2
+        ? (w - 1) / 1
+        : (3 - w) / 1
+      : 0;
+  const high = w >= 3 ? clamp((w - 3) / 2, 0, 1) : 0;
+  return { low, medium, high };
+}
+
+/**
+ * Decide next quiz difficulty using simple fuzzy rules.
+ * Rules:
+ * - IF slow OR wrong high => EASY
+ * - IF fast AND wrong low => HARD
+ * - ELSE => MEDIUM
+ */
+export function decideNextQuizDifficulty(inputs: QuizDifficultyInputs): QuizDifficulty {
+  const duration = fuzzifyDurationSeconds(inputs.durationSeconds);
+  const wrong = fuzzifyWrongCount(inputs.wrongCount);
+
+  const easyStrength = Math.max(duration.slow, wrong.high);
+  const hardStrength = Math.min(duration.fast, wrong.low);
+  const mediumStrength = Math.max(duration.medium, wrong.medium);
+
+  if (easyStrength >= hardStrength && easyStrength >= mediumStrength) return 'EASY';
+  if (hardStrength >= easyStrength && hardStrength >= mediumStrength) return 'HARD';
+  return 'MEDIUM';
 }
 
 // ====================================
