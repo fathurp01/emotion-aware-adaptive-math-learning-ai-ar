@@ -148,7 +148,14 @@ export function applyFuzzyLogic(inputs: FuzzyInputs): FuzzyOutputs {
   // ====================================
   // RULE 1: Negative Student
   // ====================================
-  if (emotion === 'Negative' && confLevel.high > 0.5) {
+  // NOTE:
+  // MediaPipe fallback confidence is often lower than the TFJS model.
+  // If we gate assist features behind a very high confidence threshold,
+  // Easy-Read/hints will almost never activate under fallback.
+  //
+  // So: for "Negative" we enable core assists, and reserve the more
+  // disruptive intervention (breathing exercise) for strong negatives.
+  if (emotion === 'Negative') {
     outputs = {
       ...outputs,
       uiTheme: 'CALM',
@@ -158,7 +165,8 @@ export function applyFuzzyLogic(inputs: FuzzyInputs): FuzzyOutputs {
       difficultyAdjustment: scoreLevel.low > 0.5 ? 'EASIER' : 'SAME',
       backgroundColor: 'bg-blue-50',
       textColor: 'text-blue-900',
-      showBreathingExercise: true,
+      // Strong negative only (roughly confidence >= 0.75)
+      showBreathingExercise: confidence >= 0.75,
     };
   }
 

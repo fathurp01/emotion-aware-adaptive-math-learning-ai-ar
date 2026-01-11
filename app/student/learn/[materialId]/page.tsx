@@ -111,6 +111,23 @@ export default function LearnMaterialPage() {
   // ADAPTIVE UI LOGIC (FUZZY LOGIC)
   // ====================================
 
+  // Important: clean timers only on unmount.
+  // The emotion object updates very frequently (timestamp changes), and React runs
+  // effect cleanups before re-running effects. If we clear timers on every update,
+  // the debounce timeout will never get a chance to fire.
+  useEffect(() => {
+    return () => {
+      if (activationTimerRef.current) {
+        clearTimeout(activationTimerRef.current);
+        activationTimerRef.current = null;
+      }
+      if (deactivationTimerRef.current) {
+        clearTimeout(deactivationTimerRef.current);
+        deactivationTimerRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!currentEmotion) {
       // Default config when no emotion detected
@@ -215,18 +232,6 @@ export default function LearnMaterialPage() {
         });
       }
     }
-
-    return () => {
-      // Clean timers when emotion changes/unmounts
-      if (activationTimerRef.current) {
-        clearTimeout(activationTimerRef.current);
-        activationTimerRef.current = null;
-      }
-      if (deactivationTimerRef.current) {
-        clearTimeout(deactivationTimerRef.current);
-        deactivationTimerRef.current = null;
-      }
-    };
   }, [
     currentEmotion,
     showBreathingExercise,
