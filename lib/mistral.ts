@@ -9,6 +9,12 @@ type MistralChatResponse = {
   choices?: Array<{ message?: { content?: string } }>;
 };
 
+export type MistralGenerateOptions = {
+  maxTokens?: number;
+  temperature?: number;
+  model?: string;
+};
+
 function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
@@ -35,11 +41,18 @@ export function isMistralConfigured(): boolean {
   return Boolean((process.env.MISTRAL_API_KEY || '').trim());
 }
 
-export async function mistralGenerateText(prompt: string): Promise<string> {
+export async function mistralGenerateTextWithOptions(
+  prompt: string,
+  options?: MistralGenerateOptions
+): Promise<string> {
   const apiKey = (process.env.MISTRAL_API_KEY || '').trim();
   if (!apiKey) {
     throw new Error('Mistral API key not configured (MISTRAL_API_KEY).');
   }
+
+  const model = (options?.model || mistralModelName).trim();
+  const temperature = clampNumber(options?.temperature ?? mistralTemperature, 0, 1);
+  const maxTokens = clampNumber(options?.maxTokens ?? mistralMaxTokens, 64, 2048);
 
   const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
@@ -48,9 +61,9 @@ export async function mistralGenerateText(prompt: string): Promise<string> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: mistralModelName,
-      temperature: mistralTemperature,
-      max_tokens: mistralMaxTokens,
+      model,
+      temperature,
+      max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -64,4 +77,8 @@ export async function mistralGenerateText(prompt: string): Promise<string> {
   const text = json?.choices?.[0]?.message?.content;
   if (!text) throw new Error('Empty response from Mistral');
   return text;
+}
+
+export async function mistralGenerateText(prompt: string): Promise<string> {
+  return await mistralGenerateTextWithOptions(prompt);
 }

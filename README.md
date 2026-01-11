@@ -13,10 +13,11 @@ An intelligent learning platform that adapts to students' emotional states in re
 
 - 🎭 **Real-time Emotion Detection** - Uses webcam and TensorFlow.js for continuous emotion monitoring
 - 🧠 **Fuzzy Logic Expert System** - Adapts UI and content based on emotional state
-- 🤖 **AI-Powered Quiz Generation** - Google Gemini creates personalized questions
+- 🤖 **AI-Powered Quiz Generation** - Gemini (primary) with automatic Mistral fallback
 - 📊 **Learning Style Adaptation** - Visual, Auditory, or Kinesthetic preference detection
 - 👩‍🏫 **Teacher Dashboard** - Monitor student well-being and anxiety patterns
 - 📈 **Analytics & Insights** - Track emotional trends and learning progress
+- 🧮 **Readable Math Materials** - Markdown + LaTeX rendered via KaTeX
 
 ## 🏗️ Architecture
 
@@ -27,7 +28,7 @@ An intelligent learning platform that adapts to students' emotional states in re
 - **Database:** MySQL (Local)
 - **AI/ML:**
   - Client-side: TensorFlow.js + Teachable Machine
-  - Server-side: Google Generative AI (Gemini 1.5 Flash)
+  - Server-side: Gemini (primary) + Mistral (fallback)
 - **State Management:** Zustand
 - **Validation:** Zod
 
@@ -50,7 +51,9 @@ An intelligent learning platform that adapts to students' emotional states in re
 
 - Node.js 18+ 
 - MySQL 8.0+
-- Google Gemini API Key ([Get here](https://makersuite.google.com/app/apikey))
+- AI API Key: Gemini **or** Mistral
+  - Gemini key: https://ai.google.dev
+  - Mistral key: https://console.mistral.ai
 - Trained Teachable Machine Model ([Train here](https://teachablemachine.withgoogle.com/))
 
 ### Installation
@@ -67,16 +70,25 @@ An intelligent learning platform that adapts to students' emotional states in re
    ```
 
 3. **Setup environment variables**
-   ```bash
-   cp .env.example .env
-   ```
+  Copy from the template:
+  ```bash
+  # Windows PowerShell
+  Copy-Item .env.example .env
+  ```
    
    Edit `.env` and add:
    ```env
    DATABASE_URL="mysql://user:password@localhost:3306/emotion_learning_db"
-   GEMINI_API_KEY="your_gemini_api_key"
+  # Provide at least ONE provider
+  GEMINI_API_KEY="your_gemini_api_key"
+  # or
+  MISTRAL_API_KEY="your_mistral_api_key"
    NEXTAUTH_SECRET="generate_random_secret"
    ```
+
+  Notes:
+  - If Gemini is missing or rate-limited, the app automatically falls back to Mistral when `MISTRAL_API_KEY` is set.
+  - `npm run health-check` verifies both providers (when configured).
 
 4. **Setup database**
    ```bash
@@ -109,6 +121,17 @@ An intelligent learning platform that adapts to students' emotional states in re
    See detailed logs in your terminal. For more info, check [STARTUP_LOGGING.md](STARTUP_LOGGING.md)
    
    Open [http://localhost:3000](http://localhost:3000)
+
+## 🧾 Material Pre-generation (Global)
+
+This project can refine material content once and persist it to the DB so all users see the same finalized content.
+
+- Run manually: `npm run precompute-materials`
+- Or enable at startup via `.env`:
+  - `MATERIAL_PRECOMPUTE_ON_STARTUP=1`
+  - `MATERIAL_PRECOMPUTE_LIMIT=...`
+  - `MATERIAL_PRECOMPUTE_FORCE=1` (optional)
+  - `MATERIAL_REFINE_MAX_OUTPUT_TOKENS=1536` (longer output)
 
 7. **Manual Health Check (Optional)**
    ```bash
@@ -359,10 +382,10 @@ npm run lint             # ESLint check
 - Verify `DATABASE_URL` in `.env`
 - Run `npm run db:push` to create tables
 
-### Issue: Gemini API error
-- Verify `GEMINI_API_KEY` is correct
-- Check API quota/limits
-- Test key at [Google AI Studio](https://makersuite.google.com/)
+### Issue: AI provider error (Gemini/Mistral)
+- Verify `GEMINI_API_KEY` or `MISTRAL_API_KEY` is configured correctly
+- If Gemini is rate-limited, the system will fall back to Mistral (when configured)
+- Check provider quota/limits
 
 ## 🤝 Contributing
 
@@ -386,7 +409,7 @@ This project is for academic purposes. Please cite if used in research.
 ## 🙏 Acknowledgments
 
 - Google Teachable Machine for emotion detection framework
-- Google Gemini AI for quiz generation
+- Gemini + Mistral for quiz generation (with fallback)
 - Prisma for excellent ORM
 - Next.js team for amazing framework
 

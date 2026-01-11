@@ -1,8 +1,10 @@
 /**
- * Google Gemini AI Integration
- * 
- * This module handles all interactions with Google's Generative AI (Gemini 1.5 Flash).
- * It provides intelligent quiz generation and feedback based on:
+ * AI Text Generation (Gemini + Mistral fallback)
+ *
+ * Primary provider: Google Generative AI (Gemini).
+ * Fallback provider: Mistral Chat Completions API.
+ *
+ * This module provides intelligent quiz generation and feedback based on:
  * - Student's current emotion
  * - Student's learning style
  * - Material content
@@ -15,7 +17,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { isMistralConfigured, mistralGenerateText } from './mistral';
+import { isMistralConfigured, mistralGenerateText, mistralGenerateTextWithOptions } from './mistral';
 
 const geminiApiKey = (process.env.GEMINI_API_KEY || '').trim();
 
@@ -243,6 +245,68 @@ async function generateTextWithFallback(prompt: string): Promise<string> {
  */
 export async function aiGenerateText(prompt: string): Promise<string> {
   return await generateTextWithFallback(prompt);
+}
+
+export type AiGenerateOptions = {
+  maxOutputTokens?: number;
+  temperature?: number;
+};
+
+/**
+ * Provider-agnostic text generation with optional generation overrides.
+ *
+ * Notes:
+ * - Overrides are best-effort; only Gemini supports per-call maxOutputTokens.
+ * - When Gemini is cooling down, we still fall back to Mistral if configured.
+ */
+export async function aiGenerateTextWithOptions(prompt: string, options?: AiGenerateOptions): Promise<string> {
+  const requestedMaxTokens = typeof options?.maxOutputTokens === 'number' ? options.maxOutputTokens : undefined;
+  const requestedTemp = typeof options?.temperature === 'number' ? options.temperature : undefined;
+
+  // If no overrides requested, keep the existing logic.
+  if (!requestedMaxTokens && requestedTemp === undefined) {
+    return await aiGenerateText(prompt);
+  }
+
+  // Gemini path (best effort)
+  if (genAI && !isGeminiCoolingDown()) {
+    try {
+      const maxTokens = clampNumber(requestedMaxTokens ?? maxOutputTokens, 64, 2048);
+      const temp = clampNumber(requestedTemp ?? temperature, 0, 1);
+
+      const customModel = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          maxOutputTokens: maxTokens,
+          temperature: temp,
+          topP: 0.8,
+        },
+      });
+
+      return await withGeminiLock(async () => {
+        const result = await customModel.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+      });
+    } catch (err: any) {
+      if (isGeminiQuotaOrRateLimitError(err) && isMistralConfigured()) {
+        return await mistralGenerateTextWithOptions(prompt, {
+          maxTokens: requestedMaxTokens,
+          temperature: requestedTemp,
+        });
+      }
+      throw err;
+    }
+  }
+
+  // Fallback
+  if (isMistralConfigured()) {
+    return await mistralGenerateTextWithOptions(prompt, {
+      maxTokens: requestedMaxTokens,
+      temperature: requestedTemp,
+    });
+  }
+  throw new Error('No AI provider available (Gemini unavailable and Mistral not configured).');
 }
 
 // ====================================

@@ -3,7 +3,8 @@
  * 
  * POST /api/quiz/generate
  * 
- * This endpoint generates adaptive quiz questions using Google Gemini AI
+ * This endpoint generates adaptive quiz questions using the configured AI provider
+ * (Gemini primary with automatic Mistral fallback when configured)
  * based on material content, student's emotion, and learning style.
  * 
  * Request Body:

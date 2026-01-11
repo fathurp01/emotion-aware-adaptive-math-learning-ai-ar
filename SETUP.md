@@ -8,7 +8,9 @@ Sebelum memulai, pastikan sudah menginstall:
 - **Disarankan:** Node.js **20 LTS** (lebih stabil untuk Next.js 14 di Windows)
 - **MySQL** 8.0 atau lebih tinggi
 - **Git** (untuk version control)
-- **Google Gemini API Key** (gratis dari [ai.google.dev](https://ai.google.dev))
+- **AI API Key** (minimal salah satu):
+   - **Gemini API Key** (gratis dari [ai.google.dev](https://ai.google.dev))
+   - **Mistral API Key** (dari [console.mistral.ai](https://console.mistral.ai))
 
 ## Step-by-Step Installation
 
@@ -19,6 +21,13 @@ Jika kamu belum bisa ganti versi Node, coba jalankan dev server dengan Turbopack
 ```bash
 npm run dev:turbo
 ```
+
+### Catatan workflow (penting di Windows)
+
+- Jalankan dev server (`npm run dev` / `npm run dev:turbo`) di **terminal khusus** dan biarkan tetap hidup.
+- Untuk perintah sekali jalan (mis. `npm run db:push`, `npm run precompute-materials`, atau `Invoke-WebRequest`), pakai **terminal baru**.
+
+Kalau perintah-perintah itu dijalankan di terminal yang sama dengan dev server, proses server bisa berhenti/terganggu dan memicu error filesystem seperti `.next\\static\\chunks\\...`.
 
 ### 1. Install Dependencies
 
@@ -41,8 +50,13 @@ Buat file `.env` di root folder:
 ```env
 DATABASE_URL="mysql://root:your_password@localhost:3306/emotion_learning_db"
 GEMINI_API_KEY="your_gemini_api_key_here"
+MISTRAL_API_KEY="your_mistral_api_key_here"
 NEXTAUTH_SECRET="random_secret_key_min_32_characters"
 ```
+
+Catatan:
+- Kamu cukup mengisi **salah satu**: `GEMINI_API_KEY` atau `MISTRAL_API_KEY`.
+- Jika Gemini tidak ada atau rate-limited, sistem otomatis fallback ke Mistral (jika `MISTRAL_API_KEY` terpasang).
 
 **Cara mendapatkan Gemini API Key:**
 1. Kunjungi [https://ai.google.dev](https://ai.google.dev)
@@ -181,6 +195,25 @@ npm run db:generate
 - Cek file `.env` ada di root folder
 - Pastikan variabel ditulis persis: `GEMINI_API_KEY=...`
 - Restart dev server setelah edit `.env`
+
+### Error: "MISTRAL_API_KEY is not defined" / fallback tidak jalan
+- Pastikan `MISTRAL_API_KEY` ada di `.env`
+- Restart dev server setelah edit `.env`
+
+### Error Windows: `UNKNOWN ... open .next\\static\\chunks\\app\\layout.js`
+Ini biasanya karena file `.next` sedang terkunci / antivirus scan / Node versi terlalu baru.
+
+Solusi cepat:
+```bash
+npm run clean
+npm run dev
+```
+
+Jika masih muncul:
+- Coba `npm run dev:turbo`
+- Gunakan Node **20 LTS** (paling stabil untuk Next.js 14 di Windows)
+- Pindahkan project ke path yang lebih pendek (mis. `D:\Src\ai\project`)
+- Tambahkan folder project ke exclusion antivirus/Defender
 
 ### Camera tidak muncul
 - Allow browser camera permission

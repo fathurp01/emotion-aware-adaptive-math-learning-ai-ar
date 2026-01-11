@@ -11,6 +11,7 @@
 import { prisma } from './db';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { isMistralConfigured, mistralGenerateText } from './mistral';
+import { kickOffMaterialPrecomputeOnStartup } from './materialPrecompute';
 
 // Color codes for terminal output
 const colors = {
@@ -501,6 +502,10 @@ export async function runStartupChecks(): Promise<StartupCheckResult[]> {
     log.success('✨ All systems are GO! Application is ready to serve.');
     console.log('\n');
   }
+
+  // Optional: pre-generate/refine materials once at startup so content is stable
+  // for all users. This runs in the background and never blocks server start.
+  kickOffMaterialPrecomputeOnStartup();
   
   return results;
 }

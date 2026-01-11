@@ -79,7 +79,7 @@ export default function HomePage() {
             <FeatureCard
               icon={<Brain className="w-8 h-8 text-blue-600" />}
               title="AI-Powered Quizzes"
-              description="Questions adapt to your emotion and learning style using Google Gemini AI"
+              description="Questions adapt to your emotion and learning style using Gemini (with Mistral fallback)"
             />
             <FeatureCard
               icon={<Heart className="w-8 h-8 text-red-500" />}
@@ -119,7 +119,7 @@ export default function HomePage() {
       <footer className="container mx-auto px-4 py-8 mt-20 border-t">
         <div className="text-center text-gray-600">
           <p>Final Year Thesis Project - Emotion-Aware Adaptive Learning System</p>
-          <p className="text-sm mt-2">Built with Next.js, TensorFlow.js, and Google Gemini AI</p>
+          <p className="text-sm mt-2">Built with Next.js, TensorFlow.js, and Gemini/Mistral AI</p>
         </div>
       </footer>
     </div>

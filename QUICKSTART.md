@@ -24,7 +24,10 @@ npm run db:seed
 Buat file `.env`:
 ```env
 DATABASE_URL="mysql://root:password@localhost:3306/emotion_learning_db"
+# Provide at least ONE provider
 GEMINI_API_KEY="your_key_from_ai.google.dev"
+# or
+MISTRAL_API_KEY="your_key_from_console.mistral.ai"
 NEXTAUTH_SECRET="random_string_min_32_chars"
 ```
 
@@ -120,7 +123,7 @@ npm run lint             # Run ESLint
 
 **Quiz not generating?**
 ```
-1. Check GEMINI_API_KEY in .env
+1. Check GEMINI_API_KEY or MISTRAL_API_KEY in .env
 2. Get free key: https://ai.google.dev
 3. Restart dev server
 ```
@@ -166,7 +169,7 @@ npm install
        │
        ▼
 ┌─────────────────────┐
-│   Gemini AI         │ ← Quiz Generation
+│ Gemini/Mistral AI   │ ← Quiz Generation
 │  (Server-side)      │
 └──────┬──────────────┘
        │
@@ -188,7 +191,9 @@ npm install
 | **Database** | MySQL 8.0, Prisma ORM |
 | **State** | Zustand (with persist) |
 | **AI - Vision** | TensorFlow.js 4.22 |
-| **AI - Language** | Google Gemini 1.5 Flash |
+| **AI - Language** | Gemini (primary) + Mistral (fallback) |
+
+
 | **Expert System** | Custom Fuzzy Logic (7 rules) |
 | **Auth** | bcrypt password hashing |
 | **Validation** | Zod |
