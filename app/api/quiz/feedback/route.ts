@@ -31,7 +31,7 @@ import { generateFeedback } from '@/lib/gemini';
 const feedbackSchema = z.object({
   userId: z.string().min(1),
   materialId: z.string().min(1),
-  questionIndex: z.number().int().min(1).max(6).optional(),
+  questionIndex: z.number().int().min(1).max(10).optional(),
   questionType: z.enum(['RECAP', 'CALC']).optional(),
   durationSeconds: z.number().min(0).max(300).optional(),
   question: z.string().min(1),

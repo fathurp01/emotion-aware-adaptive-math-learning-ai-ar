@@ -28,10 +28,10 @@ import { decideNextQuizDifficulty } from '@/utils/fuzzyLogic';
 const generateQuizSchema = z.object({
   materialId: z.string().min(1, 'Material ID is required'),
   userId: z.string().min(1, 'User ID is required'),
-  questionIndex: z.number().int().min(1).max(6).default(1),
+  questionIndex: z.number().int().min(1).max(10).default(1),
   lastDurationSeconds: z.number().min(0).max(300).optional(),
   wrongCount: z.number().int().min(0).max(10).optional(),
-  previousQuestions: z.array(z.string().min(1)).max(6).optional(),
+  previousQuestions: z.array(z.string().min(1)).max(10).optional(),
   currentEmotion: z
     .enum([
       'Negative',
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Q2-Q6: calculation question, difficulty adapts via fuzzy logic.
+    // Q2-Q10: calculation question, difficulty adapts via fuzzy logic.
     const durationSeconds = lastDurationSeconds ?? 30;
     const wrongSoFar = wrongCount ?? 0;
     const baseDifficulty = decideNextQuizDifficulty({
@@ -175,6 +175,11 @@ export async function POST(request: NextRequest) {
       wrongCount: wrongSoFar,
     });
 
+    // Existing performance-based adaptation stays the main safety net.
+    // We also bias difficulty by emotion:
+    // - Positive: challenge with harder questions
+    // - Neutral: keep normal/adaptive flow
+    // - Negative: lower difficulty
     const struggleDetected =
       wrongSoFar >= 2 ||
       durationSeconds >= 60 ||
@@ -184,8 +189,13 @@ export async function POST(request: NextRequest) {
       ? 'Sepertinya kamu kesulitan, coba selesaikan ini:'
       : undefined;
 
-    // If struggling, automatically lower difficulty. Otherwise keep/raise based on fuzzy decision.
-    const targetDifficulty = struggleDetected ? 'EASY' : baseDifficulty;
+    // If struggling (wrong/time/negative), automatically lower difficulty.
+    // Otherwise: follow adaptive performance difficulty, with an extra positive bias.
+    const targetDifficulty = struggleDetected
+      ? 'EASY'
+      : canonicalEmotion === 'Positive'
+      ? 'HARD'
+      : baseDifficulty;
 
     const quizQuestion = await generateCalculationQuizQuestion(
       material.content,

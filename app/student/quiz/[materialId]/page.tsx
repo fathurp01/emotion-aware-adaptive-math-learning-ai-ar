@@ -57,7 +57,7 @@ export default function QuizPage() {
   const [shownStruggleNudge, setShownStruggleNudge] = useState(false);
   const [previousQuestions, setPreviousQuestions] = useState<string[]>([]);
 
-  const TOTAL_QUESTIONS = 6;
+  const TOTAL_QUESTIONS = 10;
 
   const fetchMaterial = useCallback(async () => {
     try {
@@ -358,6 +358,35 @@ export default function QuizPage() {
                 Skor sementara: {answeredCount > 0 ? Math.round(totalScore / answeredCount) : 0}
               </div>
             </div>
+
+            {/* Emotion guidance */}
+            {currentEmotion?.label === 'Negative' && (
+              <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-blue-900">
+                <div className="font-semibold">Tenang dulu ya</div>
+                <div className="text-sm text-blue-800">
+                  Kamu terlihat sedikit tertekan. Tarik napas pelan 3 kali, lalu kerjakan pelan-pelan.
+                  Kalau perlu, baca kembali materi sebentar.
+                </div>
+              </div>
+            )}
+
+            {currentEmotion?.label === 'Neutral' && (
+              <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900">
+                <div className="font-semibold">Kamu sudah cukup tenang</div>
+                <div className="text-sm text-gray-700">
+                  Lanjutkan dengan ritme normal ya. Fokus ke langkah-langkahnya, dan kalau mentok gunakan hint.
+                </div>
+              </div>
+            )}
+
+            {currentEmotion?.label === 'Positive' && (
+              <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-900">
+                <div className="font-semibold">Mantap!</div>
+                <div className="text-sm text-green-800">
+                  Sepertinya kamu dengan gampang memahami materi{material?.title ? `: ${material.title}` : ''}. Coba selesaikan soal berikut.
+                </div>
+              </div>
+            )}
 
             {/* Chat Messages */}
             <div className="bg-white rounded-lg shadow-sm border mb-4">
