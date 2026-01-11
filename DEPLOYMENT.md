@@ -107,7 +107,7 @@ Vercel supports static files in `public/`:
    git commit -m "Add emotion detection model"
    git push
    ```
-2. Vercel will automatically serve from `/model/model.json`
+2. Vercel will automatically serve from `/model/tfjs_model/model.json`
 
 **8. Verify Deployment**
 

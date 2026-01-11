@@ -33,10 +33,44 @@ const generateQuizSchema = z.object({
   wrongCount: z.number().int().min(0).max(10).optional(),
   previousQuestions: z.array(z.string().min(1)).max(6).optional(),
   currentEmotion: z
-    .enum(['Neutral', 'Happy', 'Anxious', 'Confused', 'Frustrated', 'Sad', 'Surprised'])
+    .enum([
+      'Negative',
+      'Neutral',
+      'Positive',
+      // legacy
+      'Happy',
+      'Anxious',
+      'Confused',
+      'Frustrated',
+      'Sad',
+      'Surprised',
+      'Angry',
+      'Fearful',
+      'Disgusted',
+    ])
     .default('Neutral'),
   confidence: z.number().min(0).max(1).default(1.0),
 });
+
+function normalizeEmotionLabel(label: string): 'Negative' | 'Neutral' | 'Positive' {
+  const normalized = label.trim().toLowerCase();
+  if (normalized === 'positive' || normalized === 'happy') return 'Positive';
+  if (normalized === 'neutral') return 'Neutral';
+  if (normalized === 'negative') return 'Negative';
+  if (
+    normalized === 'anxious' ||
+    normalized === 'confused' ||
+    normalized === 'frustrated' ||
+    normalized === 'sad' ||
+    normalized === 'angry' ||
+    normalized === 'fearful' ||
+    normalized === 'disgusted'
+  ) {
+    return 'Negative';
+  }
+  if (normalized === 'surprised') return 'Neutral';
+  return 'Neutral';
+}
 
 // ====================================
 // POST HANDLER
@@ -60,6 +94,8 @@ export async function POST(request: NextRequest) {
       currentEmotion,
       confidence: _confidence,
     } = validatedData;
+
+    const canonicalEmotion = normalizeEmotionLabel(currentEmotion);
 
     // Fetch material content from database
     const material = await prisma.material.findUnique({
@@ -106,11 +142,11 @@ export async function POST(request: NextRequest) {
     // Q1 is always a recap/reflection question (token-free; no Gemini).
     if (questionIndex === 1) {
       const hint =
-        currentEmotion === 'Anxious'
+        canonicalEmotion === 'Negative'
           ? 'Tulis poin pentingnya pelan-pelan: definisi, rumus, dan contoh.'
           : undefined;
       const supportiveMessage =
-        currentEmotion === 'Anxious' ? 'Tenang, fokus ke poin-poin utama ya.' : undefined;
+        canonicalEmotion === 'Negative' ? 'Tenang, fokus ke poin-poin utama ya.' : undefined;
 
       const duration = Date.now() - startTime;
       logRequest('POST', '/api/quiz/generate', duration, 200);
@@ -142,10 +178,7 @@ export async function POST(request: NextRequest) {
     const struggleDetected =
       wrongSoFar >= 2 ||
       durationSeconds >= 60 ||
-      currentEmotion === 'Anxious' ||
-      currentEmotion === 'Confused' ||
-      currentEmotion === 'Frustrated' ||
-      currentEmotion === 'Sad';
+      canonicalEmotion === 'Negative';
 
     const struggleNudge = struggleDetected
       ? 'Sepertinya kamu kesulitan, coba selesaikan ini:'
@@ -156,7 +189,7 @@ export async function POST(request: NextRequest) {
 
     const quizQuestion = await generateCalculationQuizQuestion(
       material.content,
-      currentEmotion,
+      canonicalEmotion,
       learningStyle,
       targetDifficulty,
       {

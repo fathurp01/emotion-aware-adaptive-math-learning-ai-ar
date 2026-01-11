@@ -350,20 +350,55 @@ function checkEnvironment(): StartupCheckResult {
 async function checkTensorFlow(): Promise<StartupCheckResult> {
   try {
     log.info('Checking TensorFlow.js...');
-    
-    const tf = await import('@tensorflow/tfjs');
-    
-    log.success('TensorFlow.js loaded successfully');
-    log.info(`  Version: ${tf.version.tfjs}`);
-    log.info(`  Backend: ${tf.getBackend()}`);
-    
+
+    // NOTE: We intentionally avoid importing the full TFJS runtime here.
+    // In Next.js dev, the instrumentation hook can run in multiple node processes,
+    // and importing TFJS emits very noisy "backend/kernel already registered" logs.
+    // Emotion inference itself happens client-side (see EmotionCamera).
+
+    // Lightweight dependency presence check without executing TFJS.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const tfjsPkg = require('@tensorflow/tfjs/package.json') as { version?: string };
+
+    // Validate model files referenced by env (or defaults).
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const path = require('node:path') as typeof import('node:path');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fs = require('node:fs') as typeof import('node:fs');
+
+    const modelUrl = process.env.NEXT_PUBLIC_EMOTION_MODEL_URL || '/model/tfjs_model/model.json';
+    const metadataUrl = process.env.NEXT_PUBLIC_EMOTION_METADATA_URL || '/model/tfjs_model/metadata.json';
+
+    const resolvePublicPath = (url: string) => {
+      const clean = url.startsWith('/') ? url.slice(1) : url;
+      return path.join(process.cwd(), 'public', clean);
+    };
+
+    const modelPath = resolvePublicPath(modelUrl);
+    const metadataPath = resolvePublicPath(metadataUrl);
+    const modelExists = fs.existsSync(modelPath);
+    const metadataExists = fs.existsSync(metadataPath);
+
+    const status: StartupCheckResult['status'] = (modelExists && metadataExists) ? 'success' : 'warning';
+
+    log.success('TensorFlow.js dependency is present');
+    log.info(`  Version: ${tfjsPkg.version || 'unknown'}`);
+    log.info(`  Model: ${modelExists ? 'found' : 'missing'} (${modelUrl})`);
+    log.info(`  Metadata: ${metadataExists ? 'found' : 'missing'} (${metadataUrl})`);
+    if (!modelExists || !metadataExists) {
+      log.warning('TensorFlow model files are missing; client-side emotion detection may not work until fixed.');
+    }
+
     return {
-      status: 'success',
+      status,
       component: 'TensorFlow.js',
-      message: 'TensorFlow.js is ready',
+      message: status === 'success' ? 'TFJS dependency + model files look OK' : 'TFJS dependency OK, but model files missing',
       details: {
-        version: tf.version.tfjs,
-        backend: tf.getBackend(),
+        version: tfjsPkg.version,
+        modelUrl,
+        metadataUrl,
+        modelExists,
+        metadataExists,
       },
     };
   } catch (error: any) {

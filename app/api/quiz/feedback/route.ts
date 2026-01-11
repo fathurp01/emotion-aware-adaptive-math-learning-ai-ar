@@ -38,9 +38,43 @@ const feedbackSchema = z.object({
   userAnswer: z.string().min(1),
   expectedAnswer: z.coerce.string().min(1),
   currentEmotion: z
-    .enum(['Neutral', 'Happy', 'Anxious', 'Confused', 'Frustrated', 'Sad', 'Surprised'])
+    .enum([
+      'Negative',
+      'Neutral',
+      'Positive',
+      // legacy
+      'Happy',
+      'Anxious',
+      'Confused',
+      'Frustrated',
+      'Sad',
+      'Surprised',
+      'Angry',
+      'Fearful',
+      'Disgusted',
+    ])
     .default('Neutral'),
 });
+
+function normalizeEmotionLabel(label: string): 'Negative' | 'Neutral' | 'Positive' {
+  const normalized = label.trim().toLowerCase();
+  if (normalized === 'positive' || normalized === 'happy') return 'Positive';
+  if (normalized === 'neutral') return 'Neutral';
+  if (normalized === 'negative') return 'Negative';
+  if (
+    normalized === 'anxious' ||
+    normalized === 'confused' ||
+    normalized === 'frustrated' ||
+    normalized === 'sad' ||
+    normalized === 'angry' ||
+    normalized === 'fearful' ||
+    normalized === 'disgusted'
+  ) {
+    return 'Negative';
+  }
+  if (normalized === 'surprised') return 'Neutral';
+  return 'Neutral';
+}
 
 function normalizeNumberString(input: string): number | null {
   const cleaned = input
@@ -146,6 +180,8 @@ export async function POST(request: NextRequest) {
       currentEmotion,
     } = validatedData;
 
+    const canonicalEmotion = normalizeEmotionLabel(currentEmotion);
+
     // Fetch material content only when needed (recap grading uses keywords)
     const material = await prisma.material.findUnique({
       where: { id: materialId },
@@ -159,10 +195,10 @@ export async function POST(request: NextRequest) {
       : gradeCalc(userAnswer, expectedAnswer);
 
     const encouragement =
-      currentEmotion === 'Anxious'
+      canonicalEmotion === 'Negative'
         ? 'Tenang, kerjakan pelan-pelan ya.'
-        : currentEmotion === 'Frustrated'
-        ? 'Tidak apa-apa, coba lagi dengan langkah kecil.'
+        : canonicalEmotion === 'Positive'
+        ? 'Mantap! Lanjut ya.'
         : 'Lanjut!';
 
     // AI-driven feedback/scoring (with local fallback for stability)
@@ -175,7 +211,7 @@ export async function POST(request: NextRequest) {
         question,
         userAnswer,
         expectedAnswer,
-        currentEmotion,
+        canonicalEmotion,
         {
           questionType: isRecap ? 'RECAP' : 'CALC',
           materialText: isRecap ? material?.content ?? '' : undefined,
@@ -218,7 +254,7 @@ export async function POST(request: NextRequest) {
         userAnswer,
         aiFeedback: feedback.feedback,
         score: feedback.score,
-        detectedEmotion: currentEmotion,
+        detectedEmotion: canonicalEmotion,
       },
     });
 

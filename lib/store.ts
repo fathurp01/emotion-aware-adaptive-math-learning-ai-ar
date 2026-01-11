@@ -19,13 +19,9 @@ import { devtools, persist } from 'zustand/middleware';
 // ====================================
 
 export type EmotionLabel =
+  | 'Negative'
   | 'Neutral'
-  | 'Happy'
-  | 'Anxious'
-  | 'Confused'
-  | 'Frustrated'
-  | 'Sad'
-  | 'Surprised';
+  | 'Positive';
 
 export interface EmotionData {
   label: EmotionLabel;
@@ -159,10 +155,28 @@ export const useEmotionStore = create<EmotionStore>()(
       }),
       {
         name: 'emotion-store', // Persist key in localStorage
+        version: 2,
         partialize: (state) => ({
           // Only persist user data, not emotion/camera state
           user: state.user,
         }),
+        migrate: (persistedState, version) => {
+          // Older versions of this app may have persisted emotion state with legacy
+          // 7-class labels (e.g. "Happy"). We never want to rehydrate those.
+          // Keep only the user slice.
+          if (!persistedState || typeof persistedState !== 'object') {
+            return { user: null } as any;
+          }
+
+          const state = persistedState as any;
+
+          // If an old version stored more fields, drop them.
+          if (version < 2) {
+            return { user: state.user ?? null } as any;
+          }
+
+          return { user: state.user ?? null } as any;
+        },
         onRehydrateStorage: () => (state) => {
           state?.setHasHydrated(true);
         },
@@ -196,6 +210,6 @@ export const useHasHydrated = () => useEmotionStore((state) => state.hasHydrated
 export const useIsAnxious = () =>
   useEmotionStore(
     (state) =>
-      state.currentEmotion?.label === 'Anxious' &&
+      state.currentEmotion?.label === 'Negative' &&
       state.currentEmotion?.confidence > 0.6
   );

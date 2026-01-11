@@ -28,6 +28,26 @@ const logEmotionSchema = z.object({
   confidence: z.number().min(0).max(1, 'Confidence must be between 0 and 1'),
 });
 
+function normalizeEmotionLabel(label: string): 'Negative' | 'Neutral' | 'Positive' {
+  const normalized = label.trim().toLowerCase();
+  if (normalized === 'positive' || normalized === 'happy') return 'Positive';
+  if (normalized === 'neutral') return 'Neutral';
+  if (normalized === 'negative') return 'Negative';
+  if (
+    normalized === 'anxious' ||
+    normalized === 'confused' ||
+    normalized === 'frustrated' ||
+    normalized === 'sad' ||
+    normalized === 'angry' ||
+    normalized === 'fearful' ||
+    normalized === 'disgusted'
+  ) {
+    return 'Negative';
+  }
+  if (normalized === 'surprised') return 'Neutral';
+  return 'Neutral';
+}
+
 // ====================================
 // POST HANDLER
 // ====================================
@@ -38,13 +58,14 @@ export async function POST(request: NextRequest) {
     const validatedData = logEmotionSchema.parse(body);
 
     const { userId, materialId, emotionLabel, confidence } = validatedData;
+    const canonicalEmotion = normalizeEmotionLabel(emotionLabel);
 
     // Save to database
     const emotionLog = await prisma.emotionLog.create({
       data: {
         userId,
         materialId: materialId || null,
-        emotionLabel,
+        emotionLabel: canonicalEmotion,
         confidence,
       },
     });
@@ -108,16 +129,26 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Calculate emotion statistics
-    const emotionCounts = emotionLogs.reduce((acc: Record<string, number>, log: any) => {
-      acc[log.emotionLabel] = (acc[log.emotionLabel] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    // Normalize legacy labels in DB so UI stays consistent (3-class)
+    const normalizedLogs = emotionLogs.map((log: any) => ({
+      ...log,
+      emotionLabel: normalizeEmotionLabel(String(log.emotionLabel ?? '')),
+    }));
+
+    // Calculate emotion statistics (always in 3-class canonical space)
+    const emotionCounts = normalizedLogs.reduce(
+      (acc: Record<'Negative' | 'Neutral' | 'Positive', number>, log: any) => {
+        const key = normalizeEmotionLabel(String(log.emotionLabel ?? ''));
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      },
+      { Negative: 0, Neutral: 0, Positive: 0 }
+    );
 
     return NextResponse.json({
       success: true,
       data: {
-        logs: emotionLogs,
+        logs: normalizedLogs,
         statistics: emotionCounts,
         totalLogs: emotionLogs.length,
       },

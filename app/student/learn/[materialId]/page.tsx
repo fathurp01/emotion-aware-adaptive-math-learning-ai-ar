@@ -26,6 +26,8 @@ import { applyFuzzyLogic, getEncouragementMessage } from '@/utils/fuzzyLogic';
 import type { FuzzyOutputs } from '@/utils/fuzzyLogic';
 import EmotionCamera from '@/components/ai/EmotionCamera';
 import AdaptiveText from '@/components/ui/AdaptiveText';
+import AudioReader from '@/components/ui/AudioReader';
+import KinestheticARPanel from '@/components/ar/KinestheticARPanel';
 import { ArrowLeft, ArrowRight, BookOpen, Lightbulb, Heart } from 'lucide-react';
 import { toast } from 'sonner'; // Install: npm install sonner
 
@@ -45,6 +47,8 @@ interface Material {
   };
 }
 
+type LearningStyle = 'VISUAL' | 'AUDITORY' | 'KINESTHETIC';
+
 // ====================================
 // COMPONENT
 // ====================================
@@ -57,6 +61,9 @@ export default function LearnMaterialPage() {
   // Zustand store
   const currentEmotion = useCurrentEmotion();
   const user = useUser();
+
+  // Learning style (default: VISUAL if unknown)
+  const learningStyle: LearningStyle = (user?.learningStyle as LearningStyle) || 'VISUAL';
 
   // Local state
   const [material, setMaterial] = useState<Material | null>(null);
@@ -399,6 +406,27 @@ export default function LearnMaterialPage() {
                 className={textColor}
               />
             </div>
+
+            {/* Learning Style Add-ons (Global content, conditional UI) */}
+            {learningStyle === 'AUDITORY' && (
+              <div className="mt-6">
+                <AudioReader
+                  title={material.title}
+                  materialId={materialId}
+                  text={material.content}
+                />
+              </div>
+            )}
+
+            {learningStyle === 'KINESTHETIC' && (
+              <div className="mt-6">
+                <KinestheticARPanel
+                  title={material.title}
+                  materialId={materialId}
+                  materialText={material.content}
+                />
+              </div>
+            )}
 
             {/* Hint Section (shown if fuzzy logic decides) */}
             {adaptiveConfig?.showHint && (

@@ -1,0 +1,1 @@
+{"modelName": "Emotion_MobileNetV2_3Class", "labels": ["negative", "neutral", "positive"], "inputSize": [48, 48], "description": "Skripsi Emotion Recognition (Positive, Neutral, Negative)"}

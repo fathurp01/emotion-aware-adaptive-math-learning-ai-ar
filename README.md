@@ -350,7 +350,7 @@ npm run lint             # ESLint check
 ## 🐛 Troubleshooting
 
 ### Issue: Model not loading
-- Ensure `/public/model/model.json` exists
+- Ensure `/public/model/tfjs_model/model.json` exists
 - Check browser console for errors
 - Verify model format is TensorFlow.js compatible
 

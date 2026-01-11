@@ -5,11 +5,20 @@
 Sebelum memulai, pastikan sudah menginstall:
 
 - **Node.js** 18.x atau lebih tinggi
+- **Disarankan:** Node.js **20 LTS** (lebih stabil untuk Next.js 14 di Windows)
 - **MySQL** 8.0 atau lebih tinggi
 - **Git** (untuk version control)
 - **Google Gemini API Key** (gratis dari [ai.google.dev](https://ai.google.dev))
 
 ## Step-by-Step Installation
+
+> Catatan (Windows): Jika `npm run dev`/`next dev` memunculkan error filesystem seperti `UNKNOWN ... open .next\\static\\chunks\\webpack.js` atau `EPERM`, biasanya ini terjadi pada Node versi terbaru (mis. 22.x) atau karena file `.next` sedang terkunci (antivirus / proses Node lain). Paling aman gunakan Node **20 LTS** dan pastikan tidak ada proses `node.exe` lain yang masih berjalan.
+
+Jika kamu belum bisa ganti versi Node, coba jalankan dev server dengan Turbopack:
+
+```bash
+npm run dev:turbo
+```
 
 ### 1. Install Dependencies
 
@@ -98,21 +107,21 @@ Ini akan membuat:
 Sistem frontend memakai TensorFlow.js untuk klasifikasi emosi.
 
 **Default path (tanpa konfigurasi tambahan):**
-- `public/model/model.json`
-- `public/model/metadata.json` (berisi `labels: string[]`)
+- `public/model/tfjs_model/model.json`
+- `public/model/tfjs_model/metadata.json` (berisi `labels: string[]`)
 
 **Konfigurasi (untuk model MobileNetV2 hasil transfer learning / fine-tuning):**
 Tambahkan env variable berikut (opsional):
 
 ```env
 # URL/path TFJS model.json (GraphModel atau LayersModel)
-NEXT_PUBLIC_EMOTION_MODEL_URL=/model/model.json
+NEXT_PUBLIC_EMOTION_MODEL_URL=/model/tfjs_model/model.json
 
 # URL/path metadata.json yang berisi labels
-NEXT_PUBLIC_EMOTION_METADATA_URL=/model/metadata.json
+NEXT_PUBLIC_EMOTION_METADATA_URL=/model/tfjs_model/metadata.json
 
 # Jika metadata.json tidak ada, bisa set labels via env (comma-separated)
-NEXT_PUBLIC_EMOTION_LABELS=Neutral,Happy,Anxious,Confused,Frustrated,Sad,Surprised
+NEXT_PUBLIC_EMOTION_LABELS=Negative,Neutral,Positive
 
 # Opsional: override lokasi wasm MediaPipe (jika ingin self-host)
 # NEXT_PUBLIC_MEDIAPIPE_WASM_BASE_URL=https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm

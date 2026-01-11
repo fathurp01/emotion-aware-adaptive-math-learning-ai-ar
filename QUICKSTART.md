@@ -75,9 +75,9 @@ Login dengan:
 - [x] Seed data
 
 ⚠️ Harus ditambahkan:
-- [ ] `public/model/model.json`
-- [ ] `public/model/model_metadata.json`
-- [ ] `public/model/weights.bin`
+- [ ] `public/model/tfjs_model/model.json`
+- [ ] `public/model/tfjs_model/metadata.json`
+- [ ] `public/model/tfjs_model/group1-shard*.bin`
 - [ ] `.env` file dengan credentials
 
 ---

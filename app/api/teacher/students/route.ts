@@ -9,6 +9,26 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { detectAnxietyPattern } from '@/utils/fuzzyLogic';
 
+function normalizeEmotionLabel(label: string): 'Negative' | 'Neutral' | 'Positive' {
+  const normalized = label.trim().toLowerCase();
+  if (normalized === 'positive' || normalized === 'happy') return 'Positive';
+  if (normalized === 'neutral') return 'Neutral';
+  if (normalized === 'negative') return 'Negative';
+  if (
+    normalized === 'anxious' ||
+    normalized === 'confused' ||
+    normalized === 'frustrated' ||
+    normalized === 'sad' ||
+    normalized === 'angry' ||
+    normalized === 'fearful' ||
+    normalized === 'disgusted'
+  ) {
+    return 'Negative';
+  }
+  if (normalized === 'surprised') return 'Neutral';
+  return 'Neutral';
+}
+
 export async function GET() {
   try {
     const students = await prisma.user.findMany({
@@ -32,11 +52,17 @@ export async function GET() {
 
     // Analyze anxiety patterns for each student
     const studentsWithAnalysis = students.map((student: any) => {
-      const recentEmotions = student.emotionLogs.map((log: any) => log.emotionLabel);
+      const normalizedEmotionLogs = student.emotionLogs.map((log: any) => ({
+        ...log,
+        emotionLabel: normalizeEmotionLabel(String(log.emotionLabel ?? '')),
+      }));
+
+      const recentEmotions = normalizedEmotionLogs.map((log: any) => log.emotionLabel);
       const hasHighAnxiety = detectAnxietyPattern(recentEmotions);
 
       return {
         ...student,
+        emotionLogs: normalizedEmotionLogs,
         hasHighAnxiety,
       };
     });

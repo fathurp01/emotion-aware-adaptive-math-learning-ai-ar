@@ -5,7 +5,7 @@
  * to determine UI adaptations based on student's emotional state and performance.
  * 
  * INPUT VARIABLES (Fuzzification):
- * 1. Emotion State (Neutral, Happy, Anxious, Confused, Frustrated)
+ * 1. Emotion State (Negative, Neutral, Positive)
  * 2. Quiz Performance (Score: 0-100)
  * 3. Confidence Level (0.0 - 1.0)
  * 
@@ -17,9 +17,9 @@
  * 5. Difficulty Adjustment (EASIER, SAME, HARDER)
  * 
  * FUZZY RULES:
- * - IF student is Anxious AND confidence is HIGH THEN use CALM theme, show hints, simplify text
- * - IF student is Confused AND score is LOW THEN show hints, simplify text, make easier
- * - IF student is Happy AND score is HIGH THEN use ENERGETIC theme, make harder
+ * - IF student is Negative AND confidence is HIGH THEN use CALM theme, show hints, simplify text
+ * - IF student is Neutral AND score is LOW THEN show hints, simplify text, make easier
+ * - IF student is Positive AND score is HIGH THEN use ENERGETIC theme, make harder
  * - etc.
  */
 
@@ -111,13 +111,9 @@ function fuzzifyScore(score: number): {
  */
 function getEmotionIntensity(emotion: EmotionLabel): number {
   const intensityMap: Record<EmotionLabel, number> = {
+    Negative: 0.9,
     Neutral: 0,
-    Happy: 0.8,
-    Anxious: 0.9,
-    Confused: 0.7,
-    Frustrated: 0.85,
-    Sad: 0.75,
-    Surprised: 0.6,
+    Positive: 0.8,
   };
   return intensityMap[emotion] || 0;
 }
@@ -135,7 +131,7 @@ export function applyFuzzyLogic(inputs: FuzzyInputs): FuzzyOutputs {
   // Fuzzify inputs
   const confLevel = fuzzifyConfidence(confidence);
   const scoreLevel = fuzzifyScore(quizScore);
-  const emotionIntensity = getEmotionIntensity(emotion);
+  void getEmotionIntensity(emotion);
 
   // Initialize output with defaults
   let outputs: FuzzyOutputs = {
@@ -150,9 +146,9 @@ export function applyFuzzyLogic(inputs: FuzzyInputs): FuzzyOutputs {
   };
 
   // ====================================
-  // RULE 1: Anxious Student
+  // RULE 1: Negative Student
   // ====================================
-  if (emotion === 'Anxious' && confLevel.high > 0.5) {
+  if (emotion === 'Negative' && confLevel.high > 0.5) {
     outputs = {
       ...outputs,
       uiTheme: 'CALM',
@@ -167,43 +163,9 @@ export function applyFuzzyLogic(inputs: FuzzyInputs): FuzzyOutputs {
   }
 
   // ====================================
-  // RULE 2: Confused Student
+  // RULE 2: Positive & High Performance
   // ====================================
-  else if (emotion === 'Confused') {
-    outputs = {
-      ...outputs,
-      uiTheme: 'CALM',
-      showHint: true,
-      simplifyText: true,
-      showEncouragement: true,
-      difficultyAdjustment: 'EASIER',
-      backgroundColor: 'bg-purple-50',
-      textColor: 'text-purple-900',
-      showBreathingExercise: false,
-    };
-  }
-
-  // ====================================
-  // RULE 3: Frustrated Student
-  // ====================================
-  else if (emotion === 'Frustrated') {
-    outputs = {
-      ...outputs,
-      uiTheme: 'CALM',
-      showHint: true,
-      simplifyText: scoreLevel.low > 0.5,
-      showEncouragement: true,
-      difficultyAdjustment: 'EASIER',
-      backgroundColor: 'bg-orange-50',
-      textColor: 'text-orange-900',
-      showBreathingExercise: true,
-    };
-  }
-
-  // ====================================
-  // RULE 4: Happy & High Performance
-  // ====================================
-  else if (emotion === 'Happy' && scoreLevel.high > 0.5) {
+  else if (emotion === 'Positive' && scoreLevel.high > 0.5) {
     outputs = {
       ...outputs,
       uiTheme: 'ENERGETIC',
@@ -218,9 +180,9 @@ export function applyFuzzyLogic(inputs: FuzzyInputs): FuzzyOutputs {
   }
 
   // ====================================
-  // RULE 5: Happy but Low Performance
+  // RULE 3: Positive but Low Performance
   // ====================================
-  else if (emotion === 'Happy' && scoreLevel.low > 0.5) {
+  else if (emotion === 'Positive' && scoreLevel.low > 0.5) {
     outputs = {
       ...outputs,
       uiTheme: 'DEFAULT',
@@ -233,26 +195,8 @@ export function applyFuzzyLogic(inputs: FuzzyInputs): FuzzyOutputs {
       showBreathingExercise: false,
     };
   }
-
   // ====================================
-  // RULE 6: Sad Student
-  // ====================================
-  else if (emotion === 'Sad') {
-    outputs = {
-      ...outputs,
-      uiTheme: 'CALM',
-      showHint: true,
-      simplifyText: true,
-      showEncouragement: true,
-      difficultyAdjustment: 'EASIER',
-      backgroundColor: 'bg-indigo-50',
-      textColor: 'text-indigo-900',
-      showBreathingExercise: true,
-    };
-  }
-
-  // ====================================
-  // RULE 7: Neutral - Base on Performance
+  // RULE 4: Neutral - Base on Performance
   // ====================================
   else if (emotion === 'Neutral') {
     if (scoreLevel.low > 0.5) {
@@ -354,25 +298,16 @@ export function getEncouragementMessage(
   emotion: EmotionLabel,
   score?: number
 ): string {
-  if (emotion === 'Anxious') {
-    return '🫂 Take a deep breath. You\'re doing great! Remember, it\'s okay to take your time.';
+  if (emotion === 'Negative') {
+    return "🫂 Tarik napas dulu. Kamu hebat—pelan-pelan aja, ya.";
   }
-  if (emotion === 'Confused') {
-    return '💡 Let\'s break this down together. Every question helps you understand better!';
+  if (emotion === 'Positive' && score && score > 70) {
+    return '🎉 Keren! Kamu sudah paham. Yuk coba tantangan sedikit lebih sulit!';
   }
-  if (emotion === 'Frustrated') {
-    return '💪 I know this is challenging, but you\'re making progress. Take a short break if you need one.';
+  if (emotion === 'Positive') {
+    return '😊 Semangat bagus! Lanjutkan ya.';
   }
-  if (emotion === 'Sad') {
-    return '🌟 Remember, learning is a journey. Every step counts, and you\'re doing wonderfully!';
-  }
-  if (emotion === 'Happy' && score && score > 70) {
-    return '🎉 Amazing work! Your effort is really paying off. Keep up the excellent progress!';
-  }
-  if (emotion === 'Happy') {
-    return '😊 Great attitude! Your positive energy makes learning easier!';
-  }
-  return '👍 You\'re on the right track. Keep going!';
+  return '👍 Kamu di jalur yang benar. Teruskan!';
 }
 
 /**
@@ -387,14 +322,38 @@ export function calculateAveragePerformance(scores: number[]): number {
  * Detect if student is in "anxiety pattern" (consistently anxious)
  */
 export function detectAnxietyPattern(
-  recentEmotions: EmotionLabel[]
+  recentEmotions: Array<string | EmotionLabel>
 ): boolean {
   if (recentEmotions.length < 3) return false;
-  
-  const anxiousCount = recentEmotions.filter(
-    (e) => e === 'Anxious' || e === 'Frustrated' || e === 'Sad'
-  ).length;
-  
+
+  const normalizeToCanonical = (label: string): EmotionLabel => {
+    const normalized = label.trim().toLowerCase();
+
+    if (normalized === 'positive' || normalized === 'happy') return 'Positive';
+    if (normalized === 'neutral') return 'Neutral';
+    if (normalized === 'negative') return 'Negative';
+
+    if (
+      normalized === 'anxious' ||
+      normalized === 'confused' ||
+      normalized === 'frustrated' ||
+      normalized === 'sad' ||
+      normalized === 'angry' ||
+      normalized === 'fearful' ||
+      normalized === 'disgusted'
+    ) {
+      return 'Negative';
+    }
+
+    if (normalized === 'surprised') return 'Neutral';
+
+    return 'Neutral';
+  };
+
+  const negativeCount = recentEmotions
+    .map((e) => normalizeToCanonical(String(e)))
+    .filter((e) => e === 'Negative').length;
+
   // If more than 60% of recent emotions are negative
-  return anxiousCount / recentEmotions.length > 0.6;
+  return negativeCount / recentEmotions.length > 0.6;
 }

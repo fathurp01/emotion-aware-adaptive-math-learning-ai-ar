@@ -78,6 +78,13 @@ model Material {
   content    String     @db.LongText // Main learning content (supports rich text/markdown)
   imageUrl   String?    // Optional image for the material
   difficulty Difficulty @default(MEDIUM)
+  // Versioning + cached enhancements (global per material)
+  contentVersion   String   @default("") // SHA-256 hash of `content` used as cache key
+  audioScript      String?  @db.LongText // Optional cached audio narration script
+  audioScriptVer   String?  // contentVersion when audioScript was generated
+  arRecipe         Json?    // Optional cached AR recipe (template-based)
+  arRecipeVer      String?  // contentVersion when arRecipe was generated
+  refinedAt        DateTime? // When content was last refined/published via AI
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 
@@ -88,6 +95,7 @@ model Material {
 
   @@index([chapterId])
   @@index([difficulty])
+  @@index([contentVersion])
 }
 
 // QuizLog Model: Records quiz interactions and AI feedback

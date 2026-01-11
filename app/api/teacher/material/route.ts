@@ -10,6 +10,11 @@ import { prisma } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { z } from 'zod';
+import { createHash } from 'crypto';
+
+function sha256(input: string): string {
+  return createHash('sha256').update(input, 'utf8').digest('hex');
+}
 
 const materialSchema = z.object({
   title: z.string().min(1),
@@ -89,6 +94,7 @@ export async function POST(req: NextRequest) {
         title: validated.title,
         chapterId: validated.chapterId,
         content: validated.content,
+        contentVersion: sha256(validated.content),
         difficulty: validated.difficulty as 'EASY' | 'MEDIUM' | 'HARD',
         imageUrl,
       },

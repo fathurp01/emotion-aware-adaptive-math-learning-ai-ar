@@ -234,12 +234,26 @@ async function generateTextWithFallback(prompt: string): Promise<string> {
 }
 
 // ====================================
+// EXPORTED GENERIC GENERATION
+// ====================================
+
+/**
+ * Provider-agnostic text generation.
+ * Uses Gemini when configured, otherwise falls back to Mistral if configured.
+ */
+export async function aiGenerateText(prompt: string): Promise<string> {
+  return await generateTextWithFallback(prompt);
+}
+
+// ====================================
 // TYPE DEFINITIONS
 // ====================================
 
 export type LearningStyle = 'VISUAL' | 'AUDITORY' | 'KINESTHETIC';
 export type EmotionType =
+  | 'Negative'
   | 'Neutral'
+  | 'Positive'
   | 'Happy'
   | 'Anxious'
   | 'Confused'
@@ -252,10 +266,10 @@ export type EmotionType =
 
 export interface QuizQuestion {
   question: string;
-  hint?: string; // Only provided if student is anxious
+  hint?: string; // Only provided if student is struggling
   expectedAnswer: string; // For reference only
   difficulty: 'EASY' | 'MEDIUM' | 'HARD';
-  supportiveMessage?: string; // Encouraging message for anxious students
+  supportiveMessage?: string; // Encouraging message for struggling students
 }
 
 export type QuizDifficulty = 'EASY' | 'MEDIUM' | 'HARD';
@@ -308,7 +322,7 @@ export async function generateQuiz(
         question: 'Explain the concept you just learned in your own words.',
         difficulty: 'MEDIUM',
         expectedAnswer: 'A clear explanation of the material content.',
-        hint: emotion === 'Anxious' ? 'Take your time and think about the main points.' : undefined,
+        hint: emotion === 'Negative' || emotion === 'Anxious' ? 'Take your time and think about the main points.' : undefined,
       };
     }
 
@@ -334,9 +348,9 @@ export async function generateQuiz(
       'Return ONLY minified JSON (no markdown, no extra text) with keys:',
       'question, expectedAnswer, difficulty (EASY|MEDIUM|HARD), hint (optional), supportiveMessage (optional).',
       'Keep question and expectedAnswer very short (<= 25 words).',
-      emotion === 'Anxious'
-        ? 'If EMOTION is Anxious: include hint + supportiveMessage.'
-        : 'If not Anxious: omit hint/supportiveMessage.',
+      emotion === 'Negative' || emotion === 'Anxious'
+        ? 'If EMOTION indicates struggle (Negative/Anxious): include hint + supportiveMessage.'
+        : 'If not struggling: omit hint/supportiveMessage.',
     ].join('\n');
 
     const task = (async () => {
@@ -364,7 +378,7 @@ export async function generateQuiz(
       question: 'Explain the concept you just learned in your own words.',
       difficulty: 'MEDIUM',
       expectedAnswer: 'A clear explanation of the material content.',
-      hint: emotion === 'Anxious' ? 'Take your time and think about the main points.' : undefined,
+      hint: emotion === 'Negative' || emotion === 'Anxious' ? 'Take your time and think about the main points.' : undefined,
     };
   }
 }
@@ -399,8 +413,8 @@ export async function generateCalculationQuizQuestion(
         question: 'Hitung hasil: 12 + 8 = ?',
         expectedAnswer: '20',
         difficulty: 'EASY',
-        hint: emotion === 'Anxious' ? 'Kerjakan pelan-pelan ya.' : undefined,
-        supportiveMessage: emotion === 'Anxious' ? 'Kamu bisa.' : undefined,
+        hint: emotion === 'Negative' || emotion === 'Anxious' ? 'Kerjakan pelan-pelan ya.' : undefined,
+        supportiveMessage: emotion === 'Negative' || emotion === 'Anxious' ? 'Kamu bisa.' : undefined,
       };
     }
 
@@ -426,9 +440,9 @@ export async function generateCalculationQuizQuestion(
       'Rules: question must require computing a numeric final answer. expectedAnswer MUST be only the final number (no words, no units).',
       'The question MUST be different from any in AVOID. Vary numbers/coefficients so questions are not repeated.',
       'Keep question short (<= 25 words).',
-      emotion === 'Anxious'
-        ? 'If E=Anxious include hint + supportiveMessage.'
-        : 'If E!=Anxious omit hint/supportiveMessage.',
+      emotion === 'Negative' || emotion === 'Anxious'
+        ? 'If E indicates struggle (Negative/Anxious) include hint + supportiveMessage.'
+        : 'If not struggling omit hint/supportiveMessage.',
     ]
       .filter(Boolean)
       .join('\n');
@@ -453,8 +467,8 @@ export async function generateCalculationQuizQuestion(
       question: 'Hitung hasil: 15 × 3 = ?',
       expectedAnswer: '45',
       difficulty: 'EASY',
-      hint: emotion === 'Anxious' ? 'Ingat perkalian itu penjumlahan berulang.' : undefined,
-      supportiveMessage: emotion === 'Anxious' ? 'Tenang, kamu bisa.' : undefined,
+      hint: emotion === 'Negative' || emotion === 'Anxious' ? 'Ingat perkalian itu penjumlahan berulang.' : undefined,
+      supportiveMessage: emotion === 'Negative' || emotion === 'Anxious' ? 'Tenang, kamu bisa.' : undefined,
     };
   }
 }
@@ -554,7 +568,9 @@ export async function generateFeedback(
  */
 function getEmotionContext(emotion: EmotionType): string {
   const contexts: Record<EmotionType, string> = {
+    Negative: 'The student seems to be struggling. Be EXTRA supportive, provide hints, simplify language, and use encouraging tone.',
     Neutral: 'The student is calm and focused. Use standard difficulty.',
+    Positive: 'The student is confident and engaged. You can challenge them slightly more.',
     Happy: 'The student is confident and engaged. You can challenge them slightly more.',
     Anxious: 'The student is nervous or stressed. Be EXTRA supportive, provide hints, and use encouraging language. Simplify the question.',
     Confused: 'The student is struggling to understand. Break things down step-by-step and use clear, simple language.',
@@ -591,7 +607,7 @@ export async function generateSimplifiedSummary(
 ): Promise<string> {
   try {
     const prompt = [
-      'Simplify this math material for an anxious/confused student.',
+      'Simplify this math material for a student who is struggling (negative emotion).',
       'Use simple language, short sentences, focus on core concepts.',
       `Material: ${materialText.substring(0, 800)}`,
       'Return 3 short sentences.',

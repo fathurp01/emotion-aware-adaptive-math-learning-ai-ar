@@ -27,6 +27,7 @@ export default function CreateMaterialPage() {
 
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -139,6 +140,39 @@ export default function CreateMaterialPage() {
     }
   };
 
+  const handleRefine = async () => {
+    if (!formData.title || !formData.content) {
+      toast.error('Isi judul dan konten terlebih dahulu');
+      return;
+    }
+
+    setIsRefining(true);
+    try {
+      const res = await fetch('/api/teacher/material/refine-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: formData.title,
+          content: formData.content,
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'Gagal refine');
+
+      const refinedContent = String(json?.refinedContent || '').trim();
+      if (!refinedContent) throw new Error('Hasil refine kosong');
+
+      setFormData((prev) => ({ ...prev, content: refinedContent }));
+      toast.success('Refine berhasil. Silakan review lalu simpan.');
+    } catch (error) {
+      console.error('Error refining material:', error);
+      toast.error(error instanceof Error ? error.message : 'Gagal refine');
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -237,6 +271,21 @@ export default function CreateMaterialPage() {
             <label className="block text-sm font-medium text-gray-900 mb-2">
               Konten Materi *
             </label>
+
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <p className="text-sm text-gray-600">
+                Kamu bisa refine konten dengan AI (opsional), lalu review sebelum simpan.
+              </p>
+              <button
+                type="button"
+                onClick={handleRefine}
+                disabled={isLoading || isRefining}
+                className="px-3 py-2 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isRefining ? 'Refining…' : 'Refine dengan AI'}
+              </button>
+            </div>
+
             <textarea
               value={formData.content}
               onChange={(e) => setFormData((prev) => ({ ...prev, content: e.target.value }))}
