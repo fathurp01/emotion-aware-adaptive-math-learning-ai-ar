@@ -50,6 +50,7 @@ model User {
   // Relations
   quizLogs    QuizLog[]
   emotionLogs EmotionLog[]
+  remedialMaterials RemedialMaterial[]
 
   @@index([email])
   @@index([role])
@@ -92,10 +93,38 @@ model Material {
   chapter     Chapter      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   quizLogs    QuizLog[]
   emotionLogs EmotionLog[]
+  remedialMaterials RemedialMaterial[]
 
   @@index([chapterId])
   @@index([difficulty])
   @@index([contentVersion])
+}
+
+// RemedialMaterial: personalized remedial content per student per material
+// Generated based on quiz feedback and (optional) last known emotion.
+model RemedialMaterial {
+  id         String   @id @default(cuid())
+  userId     String
+  materialId String
+
+  // Personalized markdown content
+  content    String   @db.LongText
+
+  // Optional: store why/how it was generated (small JSON payload)
+  basis      Json?
+  emotionLabel String?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, materialId])
+  @@index([materialId])
+  @@index([userId])
+  @@index([updatedAt])
 }
 
 // QuizLog Model: Records quiz interactions and AI feedback

@@ -71,6 +71,11 @@ export default function LearnMaterialPage() {
   const [adaptiveConfig, setAdaptiveConfig] = useState<FuzzyOutputs | null>(null);
   const [showBreathingExercise, setShowBreathingExercise] = useState(false);
 
+  const [recentQuizAvgScore, setRecentQuizAvgScore] = useState<number | null>(null);
+
+  const [remedial, setRemedial] = useState<{ content: string; updatedAt: string; emotionLabel?: string } | null>(null);
+  const [isRemedialLoading, setIsRemedialLoading] = useState(false);
+
   // Easy-Read mode stabilization to avoid flicker.
   const EASY_READ_DEBOUNCE_ON_MS = 4000;
   const EASY_READ_DEBOUNCE_OFF_MS = 6000;
@@ -106,6 +111,85 @@ export default function LearnMaterialPage() {
 
     fetchMaterial();
   }, [materialId]);
+
+  useEffect(() => {
+    async function fetchRemedial() {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(`/api/student/material/${materialId}/remedial?userId=${user.id}`);
+        if (!res.ok) return;
+        const payload = await res.json();
+        if (payload?.data?.content) {
+          setRemedial({
+            content: payload.data.content,
+            updatedAt: String(payload.data.updatedAt ?? ''),
+            emotionLabel: payload.data.emotionLabel,
+          });
+        } else {
+          setRemedial(null);
+        }
+      } catch {
+        // Ignore remedial load errors; main material should still render.
+      }
+    }
+
+    fetchRemedial();
+  }, [materialId, user?.id]);
+
+  useEffect(() => {
+    async function fetchRecentQuizSummary() {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(
+          `/api/student/quiz-log?userId=${user.id}&materialId=${materialId}&take=6`
+        );
+        if (!res.ok) return;
+        const payload = await res.json();
+        const avg = payload?.data?.avgScore;
+        void payload?.data?.count;
+        if (typeof avg === 'number' && Number.isFinite(avg)) {
+          setRecentQuizAvgScore(avg);
+        } else {
+          setRecentQuizAvgScore(null);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    fetchRecentQuizSummary();
+  }, [materialId, user?.id]);
+
+  const handleGenerateRemedial = async () => {
+    if (!user?.id || !material) return;
+
+    setIsRemedialLoading(true);
+    try {
+      const res = await fetch(`/api/student/material/${materialId}/remedial`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to generate remedial');
+      const payload = await res.json();
+      if (payload?.data?.content) {
+        setRemedial({
+          content: payload.data.content,
+          updatedAt: String(payload.data.updatedAt ?? ''),
+          emotionLabel: payload.data.emotionLabel,
+        });
+        toast.success('Materi remedial siap');
+      }
+    } catch (error) {
+      console.error('Remedial generation error:', error);
+      toast.error('Gagal membuat materi remedial');
+    } finally {
+      setIsRemedialLoading(false);
+    }
+  };
 
   // ====================================
   // ADAPTIVE UI LOGIC (FUZZY LOGIC)
@@ -148,11 +232,30 @@ export default function LearnMaterialPage() {
     const config = applyFuzzyLogic({
       emotion: currentEmotion.label,
       confidence: currentEmotion.confidence,
-      quizScore: 50, // Default, will be updated after quiz
+      // Use real recent quiz performance so Learn adapts to understanding.
+      // Fallback to 50 when no recent quiz exists yet.
+      quizScore: typeof recentQuizAvgScore === 'number' ? recentQuizAvgScore : 50,
     });
 
     // Stabilize "Easy-Read" and related assists so UI doesn't flip-flop.
     const shouldSuggestEasyRead = config.simplifyText || config.showHint;
+
+    const buildEasyReadTriggerText = () => {
+      const parts: string[] = [];
+      if (currentEmotion?.label === 'Negative') {
+        parts.push('emosi Negative');
+      }
+      if (typeof recentQuizAvgScore === 'number' && Number.isFinite(recentQuizAvgScore) && recentQuizAvgScore < 70) {
+        parts.push(`skor quiz rendah (avg ${Math.round(recentQuizAvgScore)})`);
+      }
+
+      if (parts.length === 0) {
+        // Fallback: still explain that it's based on detected signals.
+        return 'indikasi kesulitan';
+      }
+
+      return parts.join(' + ');
+    };
 
     // Manual overrides
     if (easyReadPreference === 'on') {
@@ -177,10 +280,10 @@ export default function LearnMaterialPage() {
           activationTimerRef.current = setTimeout(() => {
             activationTimerRef.current = null;
             setEasyReadEnabled(true);
-            setEasyReadAutoReason(currentEmotion.label);
+            setEasyReadAutoReason(buildEasyReadTriggerText());
             lastAutoEnabledAtRef.current = Date.now();
             toast.info('Easy-Read Mode diaktifkan', {
-              description: 'Kami mengaktifkan tampilan mudah-baca karena kamu terlihat kebingungan/tertekan.',
+              description: `Dipicu oleh: ${buildEasyReadTriggerText()}.`,
               duration: 4000,
             });
           }, EASY_READ_DEBOUNCE_ON_MS);
@@ -237,6 +340,7 @@ export default function LearnMaterialPage() {
     showBreathingExercise,
     easyReadEnabled,
     easyReadPreference,
+    recentQuizAvgScore,
   ]);
 
   // ====================================
@@ -451,6 +555,50 @@ export default function LearnMaterialPage() {
                 </div>
               </div>
             )}
+
+            {/* Personalized Remedial (Persisted per user/material) */}
+            <div className="mt-6 bg-white rounded-lg shadow-sm border">
+              <div className="p-6 border-b flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="font-semibold text-gray-900">Materi Remedial (Personal)</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Dibuat berdasarkan hasil quiz dan emosi terakhir saat belajar.
+                  </p>
+                  {remedial?.updatedAt && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Terakhir diperbarui: {new Date(remedial.updatedAt).toLocaleString()}
+                      {remedial.emotionLabel ? ` • Emosi: ${remedial.emotionLabel}` : ''}
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleGenerateRemedial}
+                  disabled={isRemedialLoading || !user?.id}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors border ${
+                    isRemedialLoading
+                      ? 'bg-gray-100 text-gray-500 border-gray-200'
+                      : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {remedial ? (isRemedialLoading ? 'Memperbarui...' : 'Perbarui Remedial') : isRemedialLoading ? 'Membuat...' : 'Buat Remedial'}
+                </button>
+              </div>
+
+              <div className="p-6">
+                {remedial?.content ? (
+                  <AdaptiveText
+                    content={remedial.content}
+                    isSimplified={true}
+                    className={textColor}
+                  />
+                ) : (
+                  <div className="text-sm text-gray-600">
+                    Belum ada materi remedial. Biasanya dibuat setelah kamu menjawab quiz dan sistem mendeteksi kamu masih kesulitan.
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Action Buttons */}
             <div className="mt-8 flex gap-4">

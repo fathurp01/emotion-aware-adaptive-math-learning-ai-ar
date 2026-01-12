@@ -105,6 +105,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
+    const materialId = searchParams.get('materialId');
     const limit = parseInt(searchParams.get('limit') || '50');
 
     if (!userId) {
@@ -116,7 +117,10 @@ export async function GET(request: NextRequest) {
 
     // Fetch recent emotion logs
     const emotionLogs = await prisma.emotionLog.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(materialId ? { materialId } : {}),
+      },
       orderBy: { timestamp: 'desc' },
       take: limit,
       include: {

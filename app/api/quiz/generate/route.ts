@@ -73,6 +73,22 @@ function normalizeEmotionLabel(label: string): 'Negative' | 'Neutral' | 'Positiv
   return 'Neutral';
 }
 
+async function getRecentEmotionFromDb(userId: string, materialId: string): Promise<'Negative' | 'Neutral' | 'Positive' | null> {
+  const since = new Date(Date.now() - 10 * 60 * 1000);
+  const last = await prisma.emotionLog.findFirst({
+    where: {
+      userId,
+      materialId,
+      timestamp: { gte: since },
+    },
+    orderBy: { timestamp: 'desc' },
+    select: { emotionLabel: true },
+  });
+
+  if (!last) return null;
+  return normalizeEmotionLabel(String(last.emotionLabel ?? 'Neutral'));
+}
+
 // ====================================
 // POST HANDLER
 // ====================================
@@ -96,7 +112,16 @@ export async function POST(request: NextRequest) {
       confidence: _confidence,
     } = validatedData;
 
-    const canonicalEmotion = normalizeEmotionLabel(currentEmotion);
+    // Emotion source priority:
+    // 1) Client-provided emotion (camera/session)
+    // 2) Last known emotion from DB during material study (no camera on quiz)
+    // 3) Neutral fallback
+    const dbEmotion = await getRecentEmotionFromDb(userId, materialId);
+    // Prefer the client's current quiz signal; only fall back to DB when the client is neutral/default.
+    const canonicalEmotion =
+      dbEmotion && normalizeEmotionLabel(currentEmotion) === 'Neutral'
+        ? dbEmotion
+        : normalizeEmotionLabel(currentEmotion);
 
     // Fetch material content from database
     const material = await prisma.material.findUnique({

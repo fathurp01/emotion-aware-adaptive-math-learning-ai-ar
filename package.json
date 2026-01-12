@@ -4,7 +4,7 @@
   "description": "Emotion-Aware Adaptive Learning System - Final Year Thesis Project",
   "private": true,
   "scripts": {
-    "clean": "node -e \"const fs=require('fs'); fs.rmSync('.next',{recursive:true,force:true}); fs.rmSync('.turbo',{recursive:true,force:true});\"",
+    "clean": "node scripts/clean.js",
     "dev": "node scripts/run-dev.js",
     "dev:clean": "npm run clean && next dev",
     "dev:turbo": "next dev --turbo",

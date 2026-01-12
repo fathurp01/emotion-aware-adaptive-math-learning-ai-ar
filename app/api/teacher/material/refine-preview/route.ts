@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { aiGenerateText } from '@/lib/gemini';
+import { aiGenerateTextWithOptions } from '@/lib/gemini';
 
 const schema = z.object({
   title: z.string().min(1),
@@ -31,7 +31,13 @@ export async function POST(request: NextRequest) {
       stripUnsafe(content).slice(0, 9000),
     ].join('\n');
 
-    const refined = await aiGenerateText(prompt);
+    const maxTokensRaw = process.env.MATERIAL_REFINE_MAX_OUTPUT_TOKENS;
+    const maxOutputTokens = maxTokensRaw ? Number.parseInt(maxTokensRaw, 10) : 1536;
+
+    const refined = await aiGenerateTextWithOptions(prompt, {
+      maxOutputTokens: Number.isFinite(maxOutputTokens) ? maxOutputTokens : 1536,
+      temperature: 0.2,
+    });
 
     return NextResponse.json({
       success: true,

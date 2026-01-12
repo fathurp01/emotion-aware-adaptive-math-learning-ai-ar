@@ -57,7 +57,12 @@ export default function QuizPage() {
   const [shownStruggleNudge, setShownStruggleNudge] = useState(false);
   const [previousQuestions, setPreviousQuestions] = useState<string[]>([]);
 
-  const TOTAL_QUESTIONS = 10;
+  const [lastEmotionFromDb, setLastEmotionFromDb] = useState<'Negative' | 'Neutral' | 'Positive' | null>(null);
+  const [correctStreak, setCorrectStreak] = useState(0);
+  const [finishReason, setFinishReason] = useState<'MASTERY' | 'MAX' | null>(null);
+
+  const MAX_QUESTIONS = 10;
+  const MASTERY_STREAK = 3;
 
   const fetchMaterial = useCallback(async () => {
     try {
@@ -81,6 +86,54 @@ export default function QuizPage() {
     fetchMaterial();
   }, [hasHydrated, user, router, fetchMaterial]);
 
+  useEffect(() => {
+    async function fetchLastEmotion() {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(
+          `/api/student/log-emotion?userId=${user.id}&materialId=${materialId}&limit=1`
+        );
+        if (!res.ok) return;
+        const payload = await res.json();
+        const label = payload?.data?.logs?.[0]?.emotionLabel;
+        if (label === 'Negative' || label === 'Neutral' || label === 'Positive') {
+          setLastEmotionFromDb(label);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    fetchLastEmotion();
+  }, [user?.id, materialId]);
+
+  const inferEmotionProxy = (
+    durationSeconds: number,
+    nextWrongCount: number,
+    streakOverride?: number
+  ): 'Negative' | 'Neutral' | 'Positive' => {
+    // No camera on quiz: infer a coarse emotion proxy from struggle signals.
+    if (nextWrongCount >= 2 || durationSeconds >= 60) return 'Negative';
+    const streak = typeof streakOverride === 'number' ? streakOverride : correctStreak;
+    if (streak >= 2 && nextWrongCount === 0) return 'Positive';
+    return 'Neutral';
+  };
+
+  const getEffectiveEmotion = (
+    durationSeconds?: number,
+    nextWrongCount?: number,
+    streakOverride?: number
+  ): 'Negative' | 'Neutral' | 'Positive' => {
+    const storeLabel = currentEmotion?.label;
+    if (storeLabel) return storeLabel;
+    if (typeof durationSeconds === 'number' && typeof nextWrongCount === 'number') {
+      // During quiz, proxy is more "current" than DB last-known emotion.
+      return inferEmotionProxy(durationSeconds, nextWrongCount, streakOverride);
+    }
+    if (lastEmotionFromDb) return lastEmotionFromDb;
+    return 'Neutral';
+  };
+
   const startQuiz = async () => {
     if (!user) return;
 
@@ -93,10 +146,14 @@ export default function QuizPage() {
       setWrongCount(0);
       setTotalScore(0);
       setAnsweredCount(0);
+      setCorrectStreak(0);
+      setFinishReason(null);
       setQuestionIndex(1);
       setQuestionStartAt(null);
       setShownStruggleNudge(false);
       setPreviousQuestions([]);
+
+      const effectiveEmotion = getEffectiveEmotion();
 
       const res = await fetch('/api/quiz/generate', {
         method: 'POST',
@@ -105,7 +162,7 @@ export default function QuizPage() {
           materialId,
           userId: user.id,
           questionIndex: 1,
-          currentEmotion: currentEmotion?.label || 'Neutral',
+          currentEmotion: effectiveEmotion,
           confidence: currentEmotion?.confidence ?? 1.0,
         }),
       });
@@ -122,7 +179,7 @@ export default function QuizPage() {
       const botMessage: Message = {
         id: Date.now().toString(),
         type: 'bot',
-        content: question.question,
+        content: `${question.question}${question.targetDifficulty ? `\n\n📌 Level: ${question.targetDifficulty}` : question.difficulty ? `\n\n📌 Level: ${question.difficulty}` : ''}`,
         timestamp: new Date(),
       };
 
@@ -161,6 +218,7 @@ export default function QuizPage() {
     setIsLoading(true);
 
     try {
+      const effectiveEmotion = getEffectiveEmotion(durationSeconds, wrongCount, correctStreak);
       const res = await fetch('/api/quiz/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -173,7 +231,7 @@ export default function QuizPage() {
           question: currentQuestion.question,
           userAnswer: userAnswer,
           expectedAnswer: String(currentQuestion.expectedAnswer),
-          currentEmotion: currentEmotion?.label || 'Neutral',
+          currentEmotion: effectiveEmotion,
         }),
       });
 
@@ -200,13 +258,52 @@ export default function QuizPage() {
       setAnsweredCount((c) => c + 1);
       if (!isCorrect) setWrongCount((w) => w + 1);
 
+      setCorrectStreak((prev) => (isCorrect ? prev + 1 : 0));
+
       const nextIndex = (currentQuestion.questionIndex ?? questionIndex) + 1;
       const nextWrong = (isCorrect ? wrongCount : wrongCount + 1);
       const nextAnswered = answeredCount + 1;
 
-      // Stop after TOTAL_QUESTIONS answered
-      if (nextAnswered >= TOTAL_QUESTIONS) {
+      // Trigger remedial generation (persisted) when student struggles.
+      // Fire-and-forget so quiz flow stays responsive.
+      const struggle = !isCorrect || scoreNum < 80 || nextWrong >= 2 || durationSeconds >= 60;
+      if (struggle) {
+        const nextStreak = isCorrect ? correctStreak + 1 : 0;
+        const proxyEmotion = getEffectiveEmotion(durationSeconds, nextWrong, nextStreak);
+        void fetch(`/api/student/material/${materialId}/remedial`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            emotionLabel: proxyEmotion,
+            wrongCount: nextWrong,
+            avgScore: nextAnswered > 0 ? (totalScore + scoreNum) / nextAnswered : scoreNum,
+            lastAttempt: {
+              question: currentQuestion.question,
+              userAnswer: userMessage.content,
+              expectedAnswer: String(currentQuestion.expectedAnswer),
+              aiFeedback: String(feedback.feedback ?? ''),
+              score: scoreNum,
+            },
+          }),
+        }).catch(() => undefined);
+      }
+
+      const nextStreak = isCorrect ? correctStreak + 1 : 0;
+
+      // Mastery stop-condition: 3 correct in a row (cap by MAX_QUESTIONS)
+      if (nextStreak >= MASTERY_STREAK) {
         setIsFinished(true);
+        setFinishReason('MASTERY');
+        setIsLoading(false);
+        setCurrentQuestion(null);
+        return;
+      }
+
+      // Safety stop after MAX_QUESTIONS answered
+      if (nextAnswered >= MAX_QUESTIONS) {
+        setIsFinished(true);
+        setFinishReason('MAX');
         setIsLoading(false);
         setCurrentQuestion(null);
         return;
@@ -233,7 +330,7 @@ export default function QuizPage() {
               lastDurationSeconds: durationSeconds,
               wrongCount: nextWrong,
               previousQuestions: avoidList,
-              currentEmotion: currentEmotion?.label || 'Neutral',
+              currentEmotion: getEffectiveEmotion(durationSeconds, nextWrong, nextStreak),
               confidence: currentEmotion?.confidence ?? 1.0,
             }),
           });
@@ -262,7 +359,7 @@ export default function QuizPage() {
             const nextBotMessage: Message = {
               id: Date.now().toString(),
               type: 'bot',
-              content: nextQuestion.question,
+              content: `${nextQuestion.question}${nextQuestion.targetDifficulty ? `\n\n📌 Level: ${nextQuestion.targetDifficulty}` : nextQuestion.difficulty ? `\n\n📌 Level: ${nextQuestion.difficulty}` : ''}`,
               timestamp: new Date(),
             };
 
@@ -352,15 +449,24 @@ export default function QuizPage() {
             {/* Progress */}
             <div className="mb-4 flex items-center justify-between text-sm text-gray-600">
               <div>
-                Soal {Math.min(answeredCount + 1, TOTAL_QUESTIONS)}/{TOTAL_QUESTIONS}
+                Soal {Math.min(answeredCount + 1, MAX_QUESTIONS)}/{MAX_QUESTIONS} (maks)
               </div>
               <div>
                 Skor sementara: {answeredCount > 0 ? Math.round(totalScore / answeredCount) : 0}
               </div>
             </div>
 
+            <div className="mb-4 flex items-center justify-between text-xs text-gray-500">
+              <div>
+                Mastery streak: <span className="font-semibold text-gray-700">{Math.min(correctStreak, MASTERY_STREAK)}/{MASTERY_STREAK}</span>
+              </div>
+              <div>
+                Emosi (fallback): <span className="font-semibold text-gray-700">{(currentEmotion?.label ?? lastEmotionFromDb ?? (wrongCount >= 2 ? 'Negative' : 'Neutral'))}</span>
+              </div>
+            </div>
+
             {/* Emotion guidance */}
-            {currentEmotion?.label === 'Negative' && (
+            {(currentEmotion?.label ?? lastEmotionFromDb ?? (wrongCount >= 2 ? 'Negative' : 'Neutral')) === 'Negative' && (
               <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-blue-900">
                 <div className="font-semibold">Tenang dulu ya</div>
                 <div className="text-sm text-blue-800">
@@ -370,7 +476,7 @@ export default function QuizPage() {
               </div>
             )}
 
-            {currentEmotion?.label === 'Neutral' && (
+            {(currentEmotion?.label ?? lastEmotionFromDb ?? (wrongCount >= 2 ? 'Negative' : 'Neutral')) === 'Neutral' && (
               <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900">
                 <div className="font-semibold">Kamu sudah cukup tenang</div>
                 <div className="text-sm text-gray-700">
@@ -379,7 +485,7 @@ export default function QuizPage() {
               </div>
             )}
 
-            {currentEmotion?.label === 'Positive' && (
+            {(currentEmotion?.label ?? lastEmotionFromDb ?? (wrongCount >= 2 ? 'Negative' : 'Neutral')) === 'Positive' && (
               <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-900">
                 <div className="font-semibold">Mantap!</div>
                 <div className="text-sm text-green-800">
@@ -487,6 +593,16 @@ export default function QuizPage() {
             ) : (
               <div className="bg-white rounded-lg shadow-sm border p-6">
                 <h3 className="text-lg font-bold text-gray-900">Quiz Selesai</h3>
+                {finishReason === 'MASTERY' && (
+                  <p className="mt-1 text-green-700 text-sm font-medium">
+                    Mastery tercapai: {MASTERY_STREAK} jawaban benar berturut-turut.
+                  </p>
+                )}
+                {finishReason === 'MAX' && (
+                  <p className="mt-1 text-gray-600 text-sm">
+                    Batas maksimal {MAX_QUESTIONS} soal tercapai.
+                  </p>
+                )}
                 <p className="mt-1 text-gray-700">
                   Skor akhir: <span className="font-semibold">{answeredCount > 0 ? Math.round(totalScore / answeredCount) : 0}</span>/100
                 </p>
@@ -501,7 +617,7 @@ export default function QuizPage() {
                     href={`/student/learn/${materialId}`}
                     className="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
                   >
-                    Belajar Ulang
+                    Kembali ke Materi (lihat remedial)
                   </Link>
                 </div>
               </div>
