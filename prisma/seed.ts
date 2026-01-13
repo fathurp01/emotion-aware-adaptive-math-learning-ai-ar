@@ -60,8 +60,8 @@ async function main() {
     update: {},
     create: {
       id: 'ch1',
-      title: 'Aljabar Dasar',
-      description: 'Pengenalan konsep aljabar dan persamaan linear',
+      title: 'Basic Algebra',
+      description: 'Introduction to algebra concepts and linear equations',
       orderIndex: 1,
     },
   });
@@ -71,8 +71,8 @@ async function main() {
     update: {},
     create: {
       id: 'ch2',
-      title: 'Geometri',
-      description: 'Bentuk, luas, dan volume bangun ruang',
+      title: 'Geometry',
+      description: 'Shapes, area, and volume of geometric figures',
       orderIndex: 2,
     },
   });
@@ -82,8 +82,8 @@ async function main() {
     update: {},
     create: {
       id: 'ch3',
-      title: 'Bilangan & Aritmetika Sosial',
-      description: 'Bilangan, pecahan, persen, dan aplikasi sehari-hari',
+      title: 'Numbers & Social Arithmetic',
+      description: 'Numbers, fractions, percentages, and daily applications',
       orderIndex: 3,
     },
   });
@@ -93,8 +93,8 @@ async function main() {
     update: {},
     create: {
       id: 'ch4',
-      title: 'Statistika & Peluang',
-      description: 'Mengolah data dan peluang kejadian sederhana',
+      title: 'Statistics & Probability',
+      description: 'Data processing and simple probability',
       orderIndex: 4,
     },
   });
@@ -104,8 +104,8 @@ async function main() {
     update: {},
     create: {
       id: 'ch5',
-      title: 'Perbandingan & Skala',
-      description: 'Rasio, skala peta, dan perbandingan senilai/berbalik nilai',
+      title: 'Ratio & Scale',
+      description: 'Ratios, map scales, and direct/inverse proportions',
       orderIndex: 5,
     },
   });
@@ -115,8 +115,8 @@ async function main() {
     update: {},
     create: {
       id: 'ch6',
-      title: 'Fungsi & Transformasi',
-      description: 'Konsep fungsi, grafik, dan transformasi geometri',
+      title: 'Functions & Transformations',
+      description: 'Function concepts, graphs, and geometric transformations',
       orderIndex: 6,
     },
   });
@@ -135,739 +135,739 @@ async function main() {
   }> = [
     {
       id: 'mat1',
-      title: 'Persamaan Linear Satu Variabel (PLSV)',
+      title: 'Linear Equations in One Variable',
       chapterId: chapter1.id,
       difficulty: 'EASY',
-      content: `# Persamaan Linear Satu Variabel (PLSV)
+      content: `# Linear Equations in One Variable (PLSV)
 
-## Tujuan Belajar
-- Memahami bentuk umum PLSV dan komponen-komponennya.
-- Menyelesaikan PLSV dengan langkah yang runtut.
-- Mengecek kebenaran solusi dengan substitusi.
+## Learning Objectives
+- Understand the general form of PLSV and its components.
+- Solve PLSV with sequential steps.
+- Check the correctness of the solution by substitution.
 
-## Konsep Inti
-Persamaan linear satu variabel adalah persamaan yang memuat **satu variabel** (mis. $x$) dengan pangkat tertinggi **1**.
+## Core Concepts
+A linear equation in one variable is an equation that contains **one variable** (e.g., $x$) with the highest power of **1**.
 
-**Bentuk umum:**
+**General form:**
 $$ax + b = c$$
-dengan $a \neq 0$.
+where $a \\neq 0$.
 
-## Strategi Penyelesaian
-1. **Sederhanakan** (jika ada kurung/pecahan).
-2. **Kumpulkan** suku yang memuat variabel di satu ruas.
-3. **Kumpulkan** konstanta di ruas lain.
-4. **Bagi** kedua ruas dengan koefisien variabel.
-5. **Cek** dengan substitusi.
+## Solving Strategy
+1. **Simplify** (if there are brackets/fractions).
+2. **Group** terms containing the variable on one side.
+3. **Group** constants on the other side.
+4. **Divide** both sides by the variable's coefficient.
+5. **Check** by substitution.
 
-## Contoh 1
-Selesaikan $2x + 5 = 11$.
+## Example 1
+Solve $2x + 5 = 11$.
 
-Langkah:
+Steps:
 $$2x = 11 - 5 = 6$$
 $$x = 6/2 = 3$$
-Cek: $2(3) + 5 = 11$ (benar).
+Check: $2(3) + 5 = 11$ (correct).
 
-## Contoh 2
-Selesaikan $3x - 7 = 8$.
+## Example 2
+Solve $3x - 7 = 8$.
 
 $$3x = 8 + 7 = 15$$
 $$x = 15/3 = 5$$
 
-## Latihan
+## Exercises
 1. $x + 9 = 17$
 2. $5x - 10 = 25$
 3. $4(x - 2) = 20$
 
-## Kunci Singkat
+## Answer Key
 1) $x=8$  2) $x=7$  3) $x=7$`,
     },
     {
       id: 'mat2',
-      title: 'Sistem Persamaan Linear Dua Variabel (SPLDV)',
+      title: 'System of Linear Equations in Two Variables',
       chapterId: chapter1.id,
       difficulty: 'MEDIUM',
-      content: `# Sistem Persamaan Linear Dua Variabel (SPLDV)
+      content: `# System of Linear Equations in Two Variables (SPLDV)
 
-## Tujuan Belajar
-- Memahami SPLDV sebagai pasangan persamaan linear.
-- Menyelesaikan SPLDV dengan eliminasi dan substitusi.
-- Menafsirkan solusi sebagai titik potong dua garis.
+## Learning Objectives
+- Understand SPLDV as a pair of linear equations.
+- Solve SPLDV using elimination and substitution.
+- Interpret the solution as the intersection point of two lines.
 
-## Konsep Inti
-SPLDV adalah dua persamaan linear dengan dua variabel yang sama, misalnya $x$ dan $y$:
+## Core Concepts
+SPLDV consists of two linear equations with the same two variables, for example $x$ and $y$:
 $$a_1x + b_1y = c_1$$
 $$a_2x + b_2y = c_2$$
 
-Solusi SPLDV adalah pasangan $(x,y)$ yang memenuhi **keduanya**.
+The solution to SPLDV is the pair $(x,y)$ that satisfies **both**.
 
-## Metode Eliminasi
-Langkah umum:
-1. Samakan koefisien salah satu variabel.
-2. Jumlah/kurangi kedua persamaan untuk menghilangkan variabel itu.
-3. Dapatkan satu variabel, lalu substitusikan untuk mendapatkan variabel lain.
+## Elimination Method
+General steps:
+1. Equalize the coefficients of one variable.
+2. Add/subtract the two equations to eliminate that variable.
+3. Obtain one variable, then substitute to find the other.
 
-## Contoh (Eliminasi)
-Selesaikan:
+## Example (Elimination)
+Solve:
 $$x + y = 5$$
 $$2x - y = 1$$
 
-Jumlahkan kedua persamaan:
-$$3x = 6 \Rightarrow x = 2$$
-Substitusi ke $x+y=5$:
-$$2 + y = 5 \Rightarrow y = 3$$
-Jadi $(x,y)=(2,3)$.
+Add the two equations:
+$$3x = 6 \\Rightarrow x = 2$$
+Substitute into $x+y=5$:
+$$2 + y = 5 \\Rightarrow y = 3$$
+So $(x,y)=(2,3)$.
 
-## Metode Substitusi
-Langkah umum:
-1. Nyatakan salah satu variabel dari salah satu persamaan.
-2. Substitusikan ke persamaan lain.
-3. Selesaikan dan cek.
+## Substitution Method
+General steps:
+1. Express one variable from one of the equations.
+2. Substitute into the other equation.
+3. Solve and check.
 
-## Latihan
-1. $x - y = 4$ dan $x + y = 10$
-2. $2x + y = 11$ dan $x - y = 1$
-3. $3x + 2y = 16$ dan $x + 2y = 8$
+## Exercises
+1. $x - y = 4$ and $x + y = 10$
+2. $2x + y = 11$ and $x - y = 1$
+3. $3x + 2y = 16$ and $x + 2y = 8$
 
-## Kunci Singkat
+## Answer Key
 1) $(7,3)$  2) $(4,3)$  3) $(4,2)$`,
     },
     {
       id: 'mat3',
-      title: 'Lingkaran: Keliling, Luas, dan Aplikasinya',
+      title: 'Circles: Circumference, Area, and Applications',
       chapterId: chapter2.id,
       difficulty: 'EASY',
-      content: `# Lingkaran: Keliling, Luas, dan Aplikasinya
+      content: `# Circles: Circumference, Area, and Applications
 
-## Tujuan Belajar
-- Menggunakan rumus keliling dan luas lingkaran.
-- Menentukan jari-jari/diameter dari informasi keliling/luas.
-- Menerapkan pada soal cerita.
+## Learning Objectives
+- Use formulas for the circumference and area of a circle.
+- Determine radius/diameter from circumference/area information.
+- Apply to word problems.
 
-## Konsep Inti
-Lingkaran adalah himpunan titik pada bidang yang berjarak sama dari pusat.
+## Core Concepts
+A circle is the set of points in a plane that are equidistant from the center.
 
-Notasi:
-- $r$ = jari-jari
-- $d$ = diameter, dengan $d=2r$
-- $\pi \approx 3{,}14$ atau $\pi = 22/7$ (jika cocok)
+Notation:
+- $r$ = radius
+- $d$ = diameter, where $d=2r$
+- $\\pi \\approx 3.14$ or $\\pi = 22/7$ (if suitable)
 
-## Rumus Penting
-Keliling:
-$$K = 2\pi r = \pi d$$
-Luas:
-$$L = \pi r^2$$
+## Important Formulas
+Circumference:
+$$C = 2\\pi r = \\pi d$$
+Area:
+$$A = \\pi r^2$$
 
-## Contoh 1
-$r=7$ cm, tentukan $K$ dan $L$.
+## Example 1
+$r=7$ cm, find $C$ and $A$.
 
-$$K = 2\cdot \frac{22}{7}\cdot 7 = 44\text{ cm}$$
-$$L = \frac{22}{7}\cdot 7^2 = 154\text{ cm}^2$$
+$$C = 2\\cdot \\frac{22}{7}\\cdot 7 = 44\\text{ cm}$$
+$$A = \\frac{22}{7}\\cdot 7^2 = 154\\text{ cm}^2$$
 
-## Contoh 2
-Keliling $K=88$ cm, tentukan $r$.
-$$88 = 2\cdot \frac{22}{7}\cdot r \Rightarrow r=14\text{ cm}$$
+## Example 2
+Circumference $C=88$ cm, find $r$.
+$$88 = 2\\cdot \\frac{22}{7}\\cdot r \\Rightarrow r=14\\text{ cm}$$
 
-## Latihan
-1. $d=10$ cm, hitung $K$.
-2. $r=14$ cm, hitung $L$ (pakai $\pi=22/7$).
-3. Sebuah taman berbentuk lingkaran dengan $r=7$ m. Berapa keliling pagarnya?
+## Exercises
+1. $d=10$ cm, calculate $C$.
+2. $r=14$ cm, calculate $A$ (use $\\pi=22/7$).
+3. A circular park has $r=7$ m. What is the circumference of the fence?
 
-## Kunci Singkat
-1) $K=31{,}4$ cm  2) $L=616\text{ cm}^2$  3) $K=44$ m`,
+## Answer Key
+1) $C=31.4$ cm  2) $A=616\\text{ cm}^2$  3) $C=44$ m`,
     },
     {
       id: 'mat4',
-      title: 'Operasi Bilangan Bulat & Sifat-Sifatnya',
+      title: 'Integer Operations & Properties',
       chapterId: chapter3.id,
       difficulty: 'EASY',
-      content: `# Operasi Bilangan Bulat & Sifat-Sifatnya
+      content: `# Integer Operations & Properties
 
-## Tujuan Belajar
-- Menghitung penjumlahan, pengurangan, perkalian, dan pembagian bilangan bulat.
-- Memahami sifat komutatif, asosiatif, dan distributif.
+## Learning Objectives
+- Calculate addition, subtraction, multiplication, and division of integers.
+- Understand commutative, associative, and distributive properties.
 
-## Konsep Inti
-Bilangan bulat meliputi $\{\ldots,-3,-2,-1,0,1,2,3,\ldots\}$.
+## Core Concepts
+Integers include $\\{\\ldots,-3,-2,-1,0,1,2,3,\\ldots\\}$.
 
-### Aturan Tanda (ringkas)
-- $(-) + (-)$ hasilnya negatif.
-- $(-) \times (-)$ hasilnya positif.
-- $(-) \times (+)$ hasilnya negatif.
+### Sign Rules (Summary)
+- $(-) + (-)$ results in negative.
+- $(-) \\times (-)$ results in positive.
+- $(-) \\times (+)$ results in negative.
 
-## Sifat Operasi
-- Komutatif: $a+b=b+a$, $a\times b=b\times a$
-- Asosiatif: $(a+b)+c=a+(b+c)$, $(a\times b)\times c=a\times (b\times c)$
-- Distributif: $a(b+c)=ab+ac$
+## Operation Properties
+- Commutative: $a+b=b+a$, $a\\times b=b\\times a$
+- Associative: $(a+b)+c=a+(b+c)$, $(a\\times b)\\times c=a\\times (b\\times c)$
+- Distributive: $a(b+c)=ab+ac$
 
-## Contoh
+## Examples
 1. $-7 + 12 = 5$
-2. $-4 \times 6 = -24$
-3. $-18 \div 3 = -6$
-4. $3(5-2)=3\cdot 5-3\cdot 2=15-6=9$
+2. $-4 \\times 6 = -24$
+3. $-18 \\div 3 = -6$
+4. $3(5-2)=3\\cdot 5-3\\cdot 2=15-6=9$
 
-## Latihan
+## Exercises
 1. $-15 + 8$
 2. $-9 - (-4)$
-3. $(-6)\times(-7)$
+3. $(-6)\\times(-7)$
 
-## Kunci Singkat
+## Answer Key
 1) $-7$  2) $-5$  3) $42$`,
     },
     {
       id: 'mat5',
-      title: 'Pecahan: Bentuk, Operasi, dan Penyederhanaan',
+      title: 'Fractions: Forms, Operations, and Simplification',
       chapterId: chapter3.id,
       difficulty: 'MEDIUM',
-      content: `# Pecahan: Bentuk, Operasi, dan Penyederhanaan
+      content: `# Fractions: Forms, Operations, and Simplification
 
-## Tujuan Belajar
-- Menyederhanakan pecahan dan mengubah bentuk (biasa, campuran, desimal).
-- Melakukan operasi hitung pecahan.
+## Learning Objectives
+- Simplify fractions and convert forms (proper, mixed, decimal).
+- Perform fraction arithmetic operations.
 
-## Konsep Inti
-Pecahan $\frac{a}{b}$ dengan $b\neq 0$.
+## Core Concepts
+Fraction $\\frac{a}{b}$ where $b\\neq 0$.
 
-### Menyederhanakan
-Gunakan FPB dari pembilang dan penyebut.
-Contoh: $\frac{12}{18} = \frac{12\div 6}{18\div 6}=\frac{2}{3}$.
+### Simplifying
+Use the GCD of the numerator and denominator.
+Example: $\\frac{12}{18} = \\frac{12\\div 6}{18\\div 6}=\\frac{2}{3}$.
 
-### Penjumlahan/Pengurangan
-Samakan penyebut (KPK).
-Contoh: $\frac{1}{4}+\frac{1}{6}=\frac{3}{12}+\frac{2}{12}=\frac{5}{12}$.
+### Addition/Subtraction
+Equalize denominators (LCM).
+Example: $\\frac{1}{4}+\\frac{1}{6}=\\frac{3}{12}+\\frac{2}{12}=\\frac{5}{12}$.
 
-### Perkalian
-Kalikan pembilang dan penyebut:
-$\frac{2}{3}\times\frac{3}{5}=\frac{6}{15}=\frac{2}{5}$.
+### Multiplication
+Multiply numerators and denominators:
+$\\frac{2}{3}\\times\\frac{3}{5}=\\frac{6}{15}=\\frac{2}{5}$.
 
-### Pembagian
-Kalikan dengan kebalikan:
-$\frac{3}{4}\div\frac{2}{5}=\frac{3}{4}\times\frac{5}{2}=\frac{15}{8}=1\frac{7}{8}$.
+### Division
+Multiply by the reciprocal:
+$\\frac{3}{4}\\div\\frac{2}{5}=\\frac{3}{4}\\times\\frac{5}{2}=\\frac{15}{8}=1\\frac{7}{8}$.
 
-## Latihan
-1. Sederhanakan $\frac{24}{36}$.
-2. Hitung $\frac{2}{7}+\frac{3}{14}$.
-3. Hitung $\frac{5}{6}\div\frac{5}{12}$.
+## Exercises
+1. Simplify $\\frac{24}{36}$.
+2. Calculate $\\frac{2}{7}+\\frac{3}{14}$.
+3. Calculate $\\frac{5}{6}\\div\\frac{5}{12}$.
 
-## Kunci Singkat
-1) $\frac{2}{3}$  2) $\frac{1}{2}$  3) $2$`,
+## Answer Key
+1) $\\frac{2}{3}$  2) $\\frac{1}{2}$  3) $2$`,
     },
     {
       id: 'mat6',
-      title: 'Persentase & Perubahan Nilai (Naik/Turun)',
+      title: 'Percentages & Value Changes (Increase/Decrease)',
       chapterId: chapter3.id,
       difficulty: 'MEDIUM',
-      content: `# Persentase & Perubahan Nilai (Naik/Turun)
+      content: `# Percentages & Value Changes (Increase/Decrease)
 
-## Tujuan Belajar
-- Mengubah pecahan/desimal ke persen dan sebaliknya.
-- Menghitung nilai persen dari suatu jumlah.
-- Menghitung kenaikan/penurunan persen.
+## Learning Objectives
+- Convert fractions/decimals to percentages and vice versa.
+- Calculate percentage values of a quantity.
+- Calculate percentage increase/decrease.
 
-## Konsep Inti
-Persen artinya per seratus: $p\% = \frac{p}{100}$.
+## Core Concepts
+Percent means per hundred: $p\\% = \\frac{p}{100}$.
 
-## Rumus Praktis
-- $p\%$ dari $N$ adalah $\frac{p}{100}\times N$.
-- Nilai baru setelah naik $p\%$: $N_{baru}=N\times(1+\frac{p}{100})$.
-- Nilai baru setelah turun $p\%$: $N_{baru}=N\times(1-\frac{p}{100})$.
+## Practical Formulas
+- $p\\%$ of $N$ is $\\frac{p}{100}\\times N$.
+- New value after $p\\%$ increase: $N_{new}=N\\times(1+\\frac{p}{100})$.
+- New value after $p\\%$ decrease: $N_{new}=N\\times(1-\\frac{p}{100})$.
 
-## Contoh
-1. $15\%$ dari 200 = $0{,}15\times 200=30$.
-2. Harga 80.000 naik 10%: $80.000\times 1{,}10=88.000$.
-3. Nilai 90 turun 20%: $90\times 0{,}80=72$.
+## Examples
+1. $15\\%$ of 200 = $0.15\\times 200=30$.
+2. Price 80,000 increases by 10%: $80,000\\times 1.10=88,000$.
+3. Value 90 decreases by 20%: $90\\times 0.80=72$.
 
-## Latihan
-1. Ubah $0{,}35$ menjadi persen.
-2. $12\%$ dari 250?
-3. Berat 50 kg turun 8%, jadi berapa?
+## Exercises
+1. Convert $0.35$ to percentage.
+2. $12\\%$ of 250?
+3. Weight 50 kg decreases by 8%, what is it now?
 
-## Kunci Singkat
-1) $35\%$  2) $30$  3) $46$ kg`,
+## Answer Key
+1) $35\\%$  2) $30$  3) $46$ kg`,
     },
     {
       id: 'mat7',
-      title: 'Aritmetika Sosial: Untung, Rugi, Diskon, Pajak',
+      title: 'Social Arithmetic: Profit, Loss, Discount, Tax',
       chapterId: chapter3.id,
       difficulty: 'MEDIUM',
-      content: `# Aritmetika Sosial: Untung, Rugi, Diskon, Pajak
+      content: `# Social Arithmetic: Profit, Loss, Discount, Tax
 
-## Tujuan Belajar
-- Menghitung untung/rugi dan persentasenya.
-- Menghitung diskon beruntun.
-- Menghitung harga setelah pajak.
+## Learning Objectives
+- Calculate profit/loss and their percentages.
+- Calculate successive discounts.
+- Calculate price after tax.
 
-## Konsep Inti
-- Harga beli (HB), harga jual (HJ)
-- Untung: $U=HJ-HB$ (jika $HJ>HB$)
-- Rugi: $R=HB-HJ$ (jika $HJ<HB$)
+## Core Concepts
+- Buying Price (BP), Selling Price (SP)
+- Profit: $P=SP-BP$ (if $SP>BP$)
+- Loss: $L=BP-SP$ (if $SP<BP$)
 
-Persentase untung:
-$$\%U=\frac{U}{HB}\times 100\%$$
+Percentage profit:
+$$\\%P=\\frac{P}{BP}\\times 100\\%$$
 
-## Contoh 1 (Diskon)
-Harga 200.000 diskon 15%.
-$$\text{Diskon}=0{,}15\times 200.000=30.000$$
-Harga bayar = 170.000.
+## Example 1 (Discount)
+Price 200,000 discount 15%.
+$$\\text{Discount}=0.15\\times 200,000=30,000$$
+Price to pay = 170,000.
 
-## Contoh 2 (Untung)
-HB 50.000 dijual 60.000.
-Untung = 10.000, persen untung $=\frac{10.000}{50.000}\times 100\%=20\%$.
+## Example 2 (Profit)
+BP 50,000 sold for 60,000.
+Profit = 10,000, profit percentage $=\\frac{10,000}{50,000}\\times 100\\%=20\\%$.
 
-## Latihan
-1. HB 80.000, HJ 72.000. Rugi berapa dan persen rugi?
-2. Harga 120.000 diskon 10% lalu diskon lagi 5%. Berapa bayar?
-3. Harga setelah pajak 11% dari 300.000?
+## Exercises
+1. BP 80,000, SP 72,000. How much loss and loss percentage?
+2. Price 120,000 discount 10% then another 5%. How much to pay?
+3. Price after 11% tax from 300,000?
 
-## Kunci Singkat
-1) rugi 8.000; 10%  2) 102.600  3) 333.000`,
+## Answer Key
+1) loss 8,000; 10%  2) 102,600  3) 333,000`,
     },
     {
       id: 'mat8',
-      title: 'Perbandingan Senilai & Berbalik Nilai',
+      title: 'Direct & Inverse Proportions',
       chapterId: chapter5.id,
       difficulty: 'MEDIUM',
-      content: `# Perbandingan Senilai & Berbalik Nilai
+      content: `# Direct & Inverse Proportions
 
-## Tujuan Belajar
-- Mengenali perbandingan senilai dan berbalik nilai.
-- Menyelesaikan soal rasio menggunakan tabel/perkalian silang.
+## Learning Objectives
+- Recognize direct and inverse proportions.
+- Solve ratio problems using tables/cross-multiplication.
 
-## Konsep Inti
-### Perbandingan Senilai
-Jika $x$ naik, $y$ naik (atau sama-sama turun). Bentuk: $\frac{y}{x}=k$.
+## Core Concepts
+### Direct Proportion
+If $x$ increases, $y$ increases (or both decrease). Form: $\\frac{y}{x}=k$.
 
-Contoh: 2 kg gula = 30.000, maka 5 kg = ?
+Example: 2 kg sugar = 30,000, then 5 kg = ?
 
-### Perbandingan Berbalik Nilai
-Jika $x$ naik, $y$ turun. Bentuk: $x\cdot y = k$.
+### Inverse Proportion
+If $x$ increases, $y$ decreases. Form: $x\\cdot y = k$.
 
-Contoh: 4 pekerja selesai 6 hari, maka 8 pekerja = ?
+Example: 4 workers finish in 6 days, then 8 workers = ?
 
-## Contoh
-1) Senilai: 2 kg 30.000 → 1 kg 15.000 → 5 kg 75.000.
+## Examples
+1) Direct: 2 kg 30,000 → 1 kg 15,000 → 5 kg 75,000.
 
-2) Berbalik nilai:
-$$4\times 6 = 24$$
-Jika pekerja 8, hari $=24/8=3$.
+2) Inverse:
+$$4\\times 6 = 24$$
+If 8 workers, days $=24/8=3$.
 
-## Latihan
-1. 3 buku seharga 45.000. Harga 8 buku?
-2. 12 keran mengisi bak dalam 5 menit. Jika 6 keran, berapa menit?
-3. 6 liter bensin untuk 90 km. Jarak untuk 10 liter?
+## Exercises
+1. 3 books cost 45,000. Cost of 8 books?
+2. 12 taps fill a tank in 5 minutes. If 6 taps, how many minutes?
+3. 6 liters of petrol for 90 km. Distance for 10 liters?
 
-## Kunci Singkat
-1) 120.000  2) 10 menit  3) 150 km`,
+## Answer Key
+1) 120,000  2) 10 minutes  3) 150 km`,
     },
     {
       id: 'mat9',
-      title: 'Skala Peta & Denah',
+      title: 'Map Scales & Plans',
       chapterId: chapter5.id,
       difficulty: 'EASY',
-      content: `# Skala Peta & Denah
+      content: `# Map Scales & Plans
 
-## Tujuan Belajar
-- Menggunakan skala untuk menentukan jarak sebenarnya.
-- Menghitung jarak pada peta dari jarak sebenarnya.
+## Learning Objectives
+- Use scale to determine actual distance.
+- Calculate map distance from actual distance.
 
-## Konsep Inti
-Skala adalah perbandingan jarak pada peta (JP) terhadap jarak sebenarnya (JS).
-$$\text{Skala} = \frac{JP}{JS}$$
+## Core Concepts
+Scale is the ratio of distance on map (MD) to actual distance (AD).
+$$\\text{Scale} = \\frac{MD}{AD}$$
 
-Jika skala 1 : 50.000 artinya 1 cm pada peta = 50.000 cm sebenarnya.
+If scale is 1 : 50,000 it means 1 cm on map = 50,000 cm actually.
 
-## Langkah Cepat
-1. Samakan satuan (biasanya cm).
-2. Pakai rumus:
-   - $JS = JP \times \text{penyebut skala}$
-   - $JP = JS \div \text{penyebut skala}$
+## Quick Steps
+1. Equalize units (usually cm).
+2. Use formulas:
+   - $AD = MD \\times \\text{scale denominator}$
+   - $MD = AD \\div \\text{scale denominator}$
 
-## Contoh
-Skala 1:100.000, jarak pada peta 3 cm.
-$$JS = 3\times 100.000 = 300.000\text{ cm} = 3\text{ km}$$
+## Example
+Scale 1:100,000, distance on map 3 cm.
+$$AD = 3\\times 100,000 = 300,000\\text{ cm} = 3\\text{ km}$$
 
-## Latihan
-1. Skala 1:50.000, JP 8 cm. Berapa km?
-2. JS 12 km, skala 1:200.000. Berapa cm di peta?
-3. Skala 1:25.000, JP 6 cm. Berapa meter?
+## Exercises
+1. Scale 1:50,000, MD 8 cm. How many km?
+2. AD 12 km, scale 1:200,000. How many cm on map?
+3. Scale 1:25,000, MD 6 cm. How many meters?
 
-## Kunci Singkat
-1) 4 km  2) 6 cm  3) 1.500 m`,
+## Answer Key
+1) 4 km  2) 6 cm  3) 1,500 m`,
     },
     {
       id: 'mat10',
-      title: 'Himpunan: Notasi, Anggota, dan Operasi Dasar',
+      title: 'Sets: Notation, Members, and Basic Operations',
       chapterId: chapter1.id,
       difficulty: 'EASY',
-      content: `# Himpunan: Notasi, Anggota, dan Operasi Dasar
+      content: `# Sets: Notation, Members, and Basic Operations
 
-## Tujuan Belajar
-- Menuliskan himpunan dengan cara daftar dan notasi pembentuk.
-- Menggunakan operasi irisan dan gabungan.
+## Learning Objectives
+- Write sets using listing and builder notation.
+- Use intersection and union operations.
 
-## Konsep Inti
-Himpunan adalah kumpulan objek yang terdefinisi jelas.
+## Core Concepts
+A set is a well-defined collection of objects.
 
-Notasi:
-- $A=\{1,2,3\}$
-- $x\in A$ artinya $x$ anggota A.
+Notation:
+- $A=\\{1,2,3\\}$
+- $x\\in A$ means $x$ is a member of A.
 
-## Operasi Dasar
-- Gabungan: $A\cup B$ (anggota A atau B)
-- Irisan: $A\cap B$ (anggota A dan B)
+## Basic Operations
+- Union: $A\\cup B$ (members in A or B)
+- Intersection: $A\\cap B$ (members in A and B)
 
-## Contoh
-Misal $A=\{1,2,3,4\}$ dan $B=\{3,4,5\}$.
-- $A\cup B=\{1,2,3,4,5\}$
-- $A\cap B=\{3,4\}$
+## Example
+Let $A=\\{1,2,3,4\\}$ and $B=\\{3,4,5\\}$.
+- $A\\cup B=\\{1,2,3,4,5\\}$
+- $A\\cap B=\\{3,4\\}$
 
-## Latihan
-1. Tulis himpunan bilangan genap kurang dari 10.
-2. Jika $A=\{a,b,c\}$, $B=\{b,c,d\}$, tentukan $A\cap B$.
-3. Tentukan $A\cup B$ untuk soal nomor 2.
+## Exercises
+1. Write the set of even numbers less than 10.
+2. If $A=\\{a,b,c\\}$, $B=\\{b,c,d\\}$, determine $A\\cap B$.
+3. Determine $A\\cup B$ for question number 2.
 
-## Kunci Singkat
-1) $\{2,4,6,8\}$  2) $\{b,c\}$  3) $\{a,b,c,d\}$`,
+## Answer Key
+1) $\\{2,4,6,8\\}$  2) $\\{b,c\\}$  3) $\\{a,b,c,d\\}$`,
     },
     {
       id: 'mat11',
-      title: 'Garis dan Sudut: Jenis Sudut & Hubungan Sudut',
+      title: 'Lines and Angles: Types & Relationships',
       chapterId: chapter2.id,
       difficulty: 'EASY',
-      content: `# Garis dan Sudut
+      content: `# Lines and Angles
 
-## Tujuan Belajar
-- Mengenali jenis sudut (lancip, siku-siku, tumpul, lurus).
-- Menggunakan hubungan sudut berpelurus dan berpenyiku.
+## Learning Objectives
+- Identify types of angles (acute, right, obtuse, straight).
+- Use supplementary and complementary angle relationships.
 
-## Konsep Inti
-- Sudut siku-siku: $90^\circ$
-- Sudut lurus: $180^\circ$
-- Berpenyiku: jumlah $90^\circ$
-- Berpelurus: jumlah $180^\circ$
+## Core Concepts
+- Right angle: $90^\\circ$
+- Straight angle: $180^\\circ$
+- Complementary: sum is $90^\\circ$
+- Supplementary: sum is $180^\\circ$
 
-## Contoh
-1. Jika sudut A berpenyiku dengan sudut B dan $A=35^\circ$, maka $B=90^\circ-35^\circ=55^\circ$.
-2. Jika sudut C berpelurus dengan sudut D dan $C=120^\circ$, maka $D=180^\circ-120^\circ=60^\circ$.
+## Examples
+1. If angle A is complementary to angle B and $A=35^\\circ$, then $B=90^\\circ-35^\\circ=55^\\circ$.
+2. If angle C is supplementary to angle D and $C=120^\\circ$, then $D=180^\\circ-120^\\circ=60^\\circ$.
 
-## Latihan
-1. Sudut X berpenyiku dengan sudut Y. Jika X=48°, tentukan Y.
-2. Sudut P berpelurus dengan sudut Q. Jika Q=73°, tentukan P.
-3. Tentukan jenis sudut: 20°, 90°, 130°, 180°.
+## Exercises
+1. Angle X is complementary to angle Y. If X=48°, determine Y.
+2. Angle P is supplementary to angle Q. If Q=73°, determine P.
+3. Determine the type of angle: 20°, 90°, 130°, 180°.
 
-## Kunci Singkat
-1) 42°  2) 107°  3) lancip, siku-siku, tumpul, lurus`,
+## Answer Key
+1) 42°  2) 107°  3) acute, right, obtuse, straight`,
     },
     {
       id: 'mat12',
-      title: 'Segitiga dan Segiempat: Keliling & Luas',
+      title: 'Triangles & Quadrilaterals: Perimeter & Area',
       chapterId: chapter2.id,
       difficulty: 'MEDIUM',
-      content: `# Segitiga dan Segiempat: Keliling & Luas
+      content: `# Triangles & Quadrilaterals: Perimeter & Area
 
-## Tujuan Belajar
-- Menghitung keliling dan luas segitiga.
-- Menghitung luas persegi, persegi panjang, jajargenjang, dan trapesium.
+## Learning Objectives
+- Calculate perimeter and area of triangles.
+- Calculate area of squares, rectangles, parallelograms, and trapezoids.
 
-## Rumus Ringkas
-### Segitiga
-Keliling: jumlah sisi.
-Luas:
-$$L=\frac{1}{2}\times a \times t$$
+## Quick Formulas
+### Triangle
+Perimeter: sum of sides.
+Area:
+$$A=\\frac{1}{2}\\times b \\times h$$
 
-### Persegi
-$$L=s^2,\quad K=4s$$
+### Square
+$$A=s^2,\\quad P=4s$$
 
-### Persegi Panjang
-$$L=p\times l,\quad K=2(p+l)$$
+### Rectangle
+$$A=l\\times w,\\quad P=2(l+w)$$
 
-### Jajargenjang
-$$L=a\times t$$
+### Parallelogram
+$$A=b\\times h$$
 
-### Trapesium
-$$L=\frac{1}{2}(a+b)\times t$$
+### Trapezoid
+$$A=\\frac{1}{2}(a+b)\\times h$$
 
-## Contoh
-Trapesium dengan sisi sejajar 10 cm dan 6 cm, tinggi 5 cm:
-$$L=\frac{1}{2}(10+6)\times 5=40\text{ cm}^2$$
+## Example
+Trapezoid with parallel sides 10 cm and 6 cm, height 5 cm:
+$$A=\\frac{1}{2}(10+6)\\times 5=40\\text{ cm}^2$$
 
-## Latihan
-1. Segitiga alas 12 cm tinggi 8 cm. Luas?
-2. Persegi panjang p=15 cm l=7 cm. Keliling?
-3. Jajargenjang alas 9 cm tinggi 6 cm. Luas?
+## Exercises
+1. Triangle base 12 cm height 8 cm. Area?
+2. Rectangle l=15 cm w=7 cm. Perimeter?
+3. Parallelogram base 9 cm height 6 cm. Area?
 
-## Kunci Singkat
+## Answer Key
 1) 48 cm²  2) 44 cm  3) 54 cm²`,
     },
     {
       id: 'mat13',
-      title: 'Teorema Pythagoras',
+      title: 'Pythagorean Theorem',
       chapterId: chapter2.id,
       difficulty: 'MEDIUM',
-      content: `# Teorema Pythagoras
+      content: `# Pythagorean Theorem
 
-## Tujuan Belajar
-- Menggunakan Pythagoras untuk segitiga siku-siku.
-- Menentukan panjang sisi miring atau sisi siku-siku.
+## Learning Objectives
+- Use Pythagoras for right-angled triangles.
+- Determine the length of the hypotenuse or other sides.
 
-## Konsep Inti
-Untuk segitiga siku-siku dengan sisi siku-siku $a$ dan $b$, serta sisi miring $c$:
+## Core Concepts
+For a right-angled triangle with legs $a$ and $b$, and hypotenuse $c$:
 $$a^2+b^2=c^2$$
 
-## Contoh 1
+## Example 1
 $a=6$, $b=8$.
-$$c=\sqrt{6^2+8^2}=\sqrt{36+64}=\sqrt{100}=10$$
+$$c=\\sqrt{6^2+8^2}=\\sqrt{36+64}=\\sqrt{100}=10$$
 
-## Contoh 2
+## Example 2
 $c=13$, $a=5$.
-$$b=\sqrt{13^2-5^2}=\sqrt{169-25}=\sqrt{144}=12$$
+$$b=\\sqrt{13^2-5^2}=\\sqrt{169-25}=\\sqrt{144}=12$$
 
-## Latihan
-1. $a=9$, $b=12$, tentukan $c$.
-2. $c=17$, $a=8$, tentukan $b$.
-3. Apakah 7, 24, 25 membentuk segitiga siku-siku?
+## Exercises
+1. $a=9$, $b=12$, determine $c$.
+2. $c=17$, $a=8$, determine $b$.
+3. Do 7, 24, 25 form a right-angled triangle?
 
-## Kunci Singkat
-1) 15  2) 15  3) ya, karena $7^2+24^2=25^2$`,
+## Answer Key
+1) 15  2) 15  3) yes, because $7^2+24^2=25^2$`,
     },
     {
       id: 'mat14',
-      title: 'Bangun Ruang: Prisma & Limas (Volume dan Luas Permukaan)',
+      title: '3D Shapes: Prisms & Pyramids (Volume & Surface Area)',
       chapterId: chapter2.id,
       difficulty: 'HARD',
-      content: `# Bangun Ruang: Prisma & Limas
+      content: `# 3D Shapes: Prisms & Pyramids
 
-## Tujuan Belajar
-- Menghitung volume prisma dan limas.
-- Memahami ide luas permukaan sebagai jumlah luas sisi.
+## Learning Objectives
+- Calculate volume of prisms and pyramids.
+- Understand surface area as the sum of face areas.
 
-## Prisma
-Prisma memiliki dua bidang alas kongruen dan sejajar.
+## Prism
+Prisms have two congruent and parallel bases.
 
-Volume prisma:
-$$V = L_{alas} \times t$$
+Volume of prism:
+$$V = A_{base} \\times h$$
 
-## Limas
-Limas memiliki satu alas dan sisi-sisi tegak berbentuk segitiga yang bertemu di puncak.
+## Pyramid
+Pyramids have one base and triangular vertical faces meeting at an apex.
 
-Volume limas:
-$$V = \frac{1}{3} L_{alas} \times t$$
+Volume of pyramid:
+$$V = \\frac{1}{3} A_{base} \\times h$$
 
-## Contoh
-Prisma segitiga dengan $L_{alas}=24\text{ cm}^2$ dan tinggi prisma 10 cm:
-$$V=24\times 10=240\text{ cm}^3$$
+## Examples
+Triangular prism with $A_{base}=24\\text{ cm}^2$ and height 10 cm:
+$$V=24\\times 10=240\\text{ cm}^3$$
 
-Limas dengan $L_{alas}=36\text{ cm}^2$ dan tinggi 9 cm:
-$$V=\frac{1}{3}\times 36\times 9=108\text{ cm}^3$$
+Pyramid with $A_{base}=36\\text{ cm}^2$ and height 9 cm:
+$$V=\frac{1}{3}\\times 36\\times 9=108\\text{ cm}^3$$
 
-## Latihan
-1. Prisma dengan $L_{alas}=30$ cm², tinggi 12 cm. Volume?
-2. Limas dengan $L_{alas}=50$ cm², tinggi 6 cm. Volume?
-3. Jelaskan dengan kalimatmu sendiri mengapa volume limas ada faktor $\frac{1}{3}$.
+## Exercises
+1. Prism with $A_{base}=30$ cm², height 12 cm. Volume?
+2. Pyramid with $A_{base}=50$ cm², height 6 cm. Volume?
+3. Explain in your own words why the pyramid volume has a factor of $\\frac{1}{3}$.
 
-## Kunci Singkat
-1) 360 cm³  2) 100 cm³  3) (jawaban konsep)`,
+## Answer Key
+1) 360 cm³  2) 100 cm³  3) (conceptual answer)`,
     },
     {
       id: 'mat15',
-      title: 'Bangun Ruang: Tabung (Silinder) dan Kerucut',
+      title: '3D Shapes: Cylinders & Cones',
       chapterId: chapter2.id,
       difficulty: 'HARD',
-      content: `# Tabung (Silinder) dan Kerucut
+      content: `# Cylinders & Cones
 
-## Tujuan Belajar
-- Menghitung volume tabung dan kerucut.
-- Menggunakan rumus luas permukaan tabung.
+## Learning Objectives
+- Calculate volume of cylinders and cones.
+- Use surface area formulas for cylinders.
 
-## Tabung
+## Cylinder
 Volume:
-$$V=\pi r^2 t$$
+$$V=\\pi r^2 h$$
 
-Luas permukaan:
-$$L=2\pi r(r+t)$$
+Surface Area:
+$$A=2\\pi r(r+h)$$
 
-## Kerucut
+## Cone
 Volume:
-$$V=\frac{1}{3}\pi r^2 t$$
+$$V=\\frac{1}{3}\\pi r^2 h$$
 
-## Contoh
-Tabung $r=7$ cm, $t=10$ cm:
-$$V=\frac{22}{7}\cdot 7^2\cdot 10=1540\text{ cm}^3$$
+## Example
+Cylinder $r=7$ cm, $h=10$ cm:
+$$V=\\frac{22}{7}\\cdot 7^2\\cdot 10=1540\\text{ cm}^3$$
 
-## Latihan
-1. Tabung $r=5$ cm, $t=12$ cm. Volume (pakai $\pi=3{,}14$)?
-2. Kerucut $r=6$ cm, $t=9$ cm. Volume (pakai $\pi=3{,}14$)?
-3. Tabung $r=3$ cm, $t=8$ cm. Luas permukaan (pakai $\pi=3{,}14$)?
+## Exercises
+1. Cylinder $r=5$ cm, $h=12$ cm. Volume (use $\\pi=3.14$)?
+2. Cone $r=6$ cm, $h=9$ cm. Volume (use $\\pi=3.14$)?
+3. Cylinder $r=3$ cm, $h=8$ cm. Surface Area (use $\\pi=3.14$)?
 
-## Kunci Singkat
-1) 942 cm³  2) 339,12 cm³  3) 207,24 cm²`,
+## Answer Key
+1) 942 cm³  2) 339.12 cm³  3) 207.24 cm²`,
     },
     {
       id: 'mat16',
-      title: 'Statistika Dasar: Mean, Median, Modus',
+      title: 'Basic Statistics: Mean, Median, Mode',
       chapterId: chapter4.id,
       difficulty: 'EASY',
-      content: `# Statistika Dasar: Mean, Median, Modus
+      content: `# Basic Statistics: Mean, Median, Mode
 
-## Tujuan Belajar
-- Menentukan rata-rata (mean), median, dan modus.
-- Menafsirkan ukuran pemusatan data.
+## Learning Objectives
+- Determine mean, median, and mode.
+- Interpret measures of central tendency.
 
-## Konsep Inti
-Misal data: 2, 3, 3, 7, 10.
-- Mean: jumlah data dibagi banyaknya data.
-- Median: nilai tengah setelah diurutkan.
-- Modus: nilai yang paling sering muncul.
+## Core Concepts
+Given data: 2, 3, 3, 7, 10.
+- Mean: sum of data divided by count.
+- Median: middle value after sorting.
+- Mode: most frequent value.
 
-## Contoh
+## Example
 Data: 4, 6, 6, 8, 10
-- Mean: $(4+6+6+8+10)/5 = 34/5 = 6{,}8$
+- Mean: $(4+6+6+8+10)/5 = 34/5 = 6.8$
 - Median: 6
-- Modus: 6
+- Mode: 6
 
-## Latihan
+## Exercises
 1. Data: 5, 7, 9, 9, 10. Mean?
 2. Data: 2, 4, 6, 8. Median?
-3. Data: 1, 2, 2, 2, 5. Modus?
+3. Data: 1, 2, 2, 2, 5. Mode?
 
-## Kunci Singkat
+## Answer Key
 1) 8  2) 5  3) 2`,
     },
     {
       id: 'mat17',
-      title: 'Penyajian Data: Tabel dan Diagram (Batang/Garis/Lingkaran)',
+      title: 'Data Presentation: Tables & Charts',
       chapterId: chapter4.id,
       difficulty: 'MEDIUM',
-      content: `# Penyajian Data: Tabel dan Diagram
+      content: `# Data Presentation: Tables & Charts
 
-## Tujuan Belajar
-- Mengubah data menjadi tabel frekuensi sederhana.
-- Memilih diagram yang cocok (batang, garis, lingkaran).
+## Learning Objectives
+- Convert data into simple frequency tables.
+- Choose suitable charts (bar, line, pie).
 
-## Konsep Inti
-- Diagram batang: membandingkan kategori.
-- Diagram garis: melihat perubahan terhadap waktu.
-- Diagram lingkaran: melihat komposisi (persentase).
+## Core Concepts
+- Bar chart: comparing categories.
+- Line chart: observing change over time.
+- Pie chart: observing composition (percentage).
 
-## Contoh
-Data hobi 20 siswa: Sepak bola 8, Musik 6, Membaca 4, Lainnya 2.
-- Persentase sepak bola: $8/20=40\%$.
+## Example
+Hobby data of 20 students: Football 8, Music 6, Reading 4, Others 2.
+- Football percentage: $8/20=40\\%$.
 
-Diagram lingkaran: sudut sektor sepak bola $=40\%\times 360^\circ=144^\circ$.
+Pie chart: football sector angle $=40\\%\\times 360^\\circ=144^\\circ$.
 
-## Latihan
-1. Total 50 siswa: 15 suka basket. Berapa persen?
-2. Jika sektor diagram lingkaran 90°, berapa persen?
-3. Kapan lebih tepat pakai diagram garis?
+## Exercises
+1. Total 50 students: 15 like basketball. What percentage?
+2. If a pie chart sector is 90°, what percentage is it?
+3. When is it more appropriate to use a line chart?
 
-## Kunci Singkat
-1) 30%  2) 25%  3) saat data berubah terhadap waktu`,
+## Answer Key
+1) 30%  2) 25%  3) when data changes over time`,
     },
     {
       id: 'mat18',
-      title: 'Peluang Kejadian Sederhana',
+      title: 'Simple Probability',
       chapterId: chapter4.id,
       difficulty: 'MEDIUM',
-      content: `# Peluang Kejadian Sederhana
+      content: `# Simple Probability
 
-## Tujuan Belajar
-- Menghitung peluang dari percobaan sederhana.
-- Menentukan ruang sampel dan kejadian.
+## Learning Objectives
+- Calculate probability of simple experiments.
+- Determine sample space and events.
 
-## Konsep Inti
-Peluang kejadian $A$:
-$$P(A)=\frac{n(A)}{n(S)}$$
-dengan $n(A)$ banyaknya hasil yang mendukung kejadian A, dan $n(S)$ banyaknya seluruh hasil (ruang sampel).
+## Core Concepts
+Probability of event $A$:
+$$P(A)=\\frac{n(A)}{n(S)}$$
+where $n(A)$ is the number of favorable outcomes, and $n(S)$ is the total number of outcomes (sample space).
 
-## Contoh
-1) Lempar dadu: ruang sampel 6 hasil.
-Peluang muncul angka genap (2,4,6):
-$$P=\frac{3}{6}=\frac{1}{2}$$
+## Examples
+1) Throwing a die: sample space 6 outcomes.
+Probability of even number (2,4,6):
+$$P=\\frac{3}{6}=\\frac{1}{2}$$
 
-2) Lempar koin: peluang muncul gambar = $1/2$.
+2) Tossing a coin: probability of heads = $1/2$.
 
-## Latihan
-1. Lempar dadu, peluang muncul 5?
-2. Ambil 1 bola dari kotak berisi 3 merah, 2 biru. Peluang biru?
-3. Lempar 2 koin, peluang muncul 2 gambar?
+## Exercises
+1. Throwing a die, probability of getting 5?
+2. Picking 1 ball from a box with 3 red, 2 blue. Probability of blue?
+3. Tossing 2 coins, probability of getting 2 heads?
 
-## Kunci Singkat
+## Answer Key
 1) $1/6$  2) $2/5$  3) $1/4$`,
     },
     {
       id: 'mat19',
-      title: 'Fungsi dan Grafik Sederhana',
+      title: 'Functions & Simple Graphs',
       chapterId: chapter6.id,
       difficulty: 'HARD',
-      content: `# Fungsi dan Grafik Sederhana
+      content: `# Functions & Simple Graphs
 
-## Tujuan Belajar
-- Memahami fungsi sebagai aturan pasangan input-output.
-- Mengisi tabel nilai dan menggambar grafik sederhana.
+## Learning Objectives
+- Understand functions as input-output rules.
+- Fill value tables and draw simple graphs.
 
-## Konsep Inti
-Fungsi $f(x)$ adalah aturan yang memetakan setiap $x$ ke tepat satu nilai $y$.
+## Core Concepts
+Function $f(x)$ is a rule that maps every $x$ to exactly one $y$ value.
 
-Contoh fungsi linear:
+Example of linear function:
 $$y=2x+1$$
 
-## Langkah Membuat Grafik
-1. Pilih beberapa nilai $x$ (mis. -2, -1, 0, 1, 2).
-2. Hitung $y$ untuk tiap $x$.
-3. Plot titik-titik $(x,y)$ lalu hubungkan.
+## Graphing Steps
+1. Choose several $x$ values (e.g., -2, -1, 0, 1, 2).
+2. Calculate $y$ for each $x$.
+3. Plot points $(x,y)$ and connect them.
 
-## Contoh
-Untuk $y=2x+1$:
-- $x=0 \Rightarrow y=1$
-- $x=1 \Rightarrow y=3$
-- $x=2 \Rightarrow y=5$
+## Example
+For $y=2x+1$:
+- $x=0 \\Rightarrow y=1$
+- $x=1 \\Rightarrow y=3$
+- $x=2 \\Rightarrow y=5$
 
-## Latihan
-1. Buat tabel nilai untuk $y=x-3$ (x: 0,1,2,3).
-2. Titik potong sumbu-y dari $y=4x-2$?
-3. Jika $y=3x+6$ dan $x=-2$, berapa $y$?
+## Exercises
+1. Make a value table for $y=x-3$ (x: 0,1,2,3).
+2. Y-intercept of $y=4x-2$?
+3. If $y=3x+6$ and $x=-2$, what is $y$?
 
-## Kunci Singkat
+## Answer Key
 1) (0,-3),(1,-2),(2,-1),(3,0)  2) -2  3) 0`,
     },
     {
       id: 'mat20',
-      title: 'Transformasi Geometri: Translasi, Refleksi, Rotasi, Dilatasi',
+      title: 'Geometric Transformations',
       chapterId: chapter6.id,
       difficulty: 'HARD',
-      content: `# Transformasi Geometri
+      content: `# Geometric Transformations
 
-## Tujuan Belajar
-- Mengenali empat transformasi dasar pada bidang.
-- Menghitung koordinat bayangan titik setelah transformasi sederhana.
+## Learning Objectives
+- Recognize four basic transformations on a plane.
+- Calculate image coordinates after simple transformations.
 
-## Konsep Inti
-Misal titik $P(x,y)$.
+## Core Concepts
+Let point $P(x,y)$.
 
-### 1) Translasi
-Geser sejauh $(a,b)$:
+### 1) Translation
+Shift by $(a,b)$:
 $$P'(x+a, y+b)$$
 
-### 2) Refleksi
-- Terhadap sumbu-x: $(x,-y)$
-- Terhadap sumbu-y: $(-x,y)$
+### 2) Reflection
+- Across x-axis: $(x,-y)$
+- Across y-axis: $(-x,y)$
 
-### 3) Rotasi (pusat O)
-- 90° berlawanan jarum jam: $(x,y)\to(-y,x)$
-- 180°: $(x,y)\to(-x,-y)$
+### 3) Rotation (center O)
+- 90° counter-clockwise: $(x,y)\\to(-y,x)$
+- 180°: $(x,y)\\to(-x,-y)$
 
-### 4) Dilatasi
-Skala $k$ (pusat O):
+### 4) Dilation
+Scale $k$ (center O):
 $$P'(kx, ky)$$
 
-## Contoh
-Titik P(2,-1) ditranslasi (3,4) → P'(5,3).
+## Example
+Point P(2,-1) translated by (3,4) → P'(5,3).
 
-## Latihan
-1. Q(-3,2) direfleksi terhadap sumbu-y.
-2. R(1,4) dirotasi 180° terhadap O.
-3. S(2,3) didilatasi skala 2 terhadap O.
+## Exercises
+1. Q(-3,2) reflected across y-axis.
+2. R(1,4) rotated 180° around O.
+3. S(2,3) dilated by scale 2 around O.
 
-## Kunci Singkat
+## Answer Key
 1) (3,2)  2) (-1,-4)  3) (4,6)`,
     },
   ];

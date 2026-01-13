@@ -97,7 +97,7 @@ export default function CreateMaterialPage() {
     e.preventDefault();
 
     if (!formData.title || !formData.chapterId || !formData.content) {
-      toast.error('Harap isi semua field yang wajib');
+      toast.error('Please fill in all required fields');
       return;
     }
 
@@ -112,11 +112,11 @@ export default function CreateMaterialPage() {
 
       if (formData.imageFile) {
         if (!formData.imageFile.type.startsWith('image/')) {
-          toast.error('File harus berupa gambar');
+          toast.error('File must be an image');
           return;
         }
         if (formData.imageFile.size > MAX_IMAGE_BYTES) {
-          toast.error('Ukuran gambar maksimal 5MB');
+          toast.error('Max image size is 5MB');
           return;
         }
         formDataToSend.append('image', formData.imageFile);
@@ -132,11 +132,11 @@ export default function CreateMaterialPage() {
         throw new Error(payload?.error || 'Failed to create material');
       }
 
-      toast.success('Materi berhasil dibuat!');
+      toast.success('Material created successfully!');
       router.push('/teacher/dashboard');
     } catch (error) {
       console.error('Error creating material:', error);
-      toast.error(error instanceof Error ? error.message : 'Gagal membuat materi');
+      toast.error(error instanceof Error ? error.message : 'Failed to create material');
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +144,7 @@ export default function CreateMaterialPage() {
 
   const handleRefine = async () => {
     if (!formData.title || !formData.content) {
-      toast.error('Isi judul dan konten terlebih dahulu');
+      toast.error('Fill in title and content first');
       return;
     }
 
@@ -160,16 +160,16 @@ export default function CreateMaterialPage() {
       });
 
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'Gagal refine');
+      if (!res.ok) throw new Error(json?.error || 'Refine failed');
 
       const refinedContent = String(json?.refinedContent || '').trim();
-      if (!refinedContent) throw new Error('Hasil refine kosong');
+      if (!refinedContent) throw new Error('Refine result empty');
 
       setFormData((prev) => ({ ...prev, content: refinedContent }));
-      toast.success('Refine berhasil. Silakan review lalu simpan.');
+      toast.success('Refine successful. Please review then save.');
     } catch (error) {
       console.error('Error refining material:', error);
-      toast.error(error instanceof Error ? error.message : 'Gagal refine');
+      toast.error(error instanceof Error ? error.message : 'Refine failed');
     } finally {
       setIsRefining(false);
     }
@@ -188,8 +188,8 @@ export default function CreateMaterialPage() {
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Buat Materi Baru</h1>
-              <p className="text-sm text-gray-600">Tambahkan materi pembelajaran untuk siswa</p>
+              <h1 className="text-xl font-bold text-gray-900">Create New Material</h1>
+              <p className="text-sm text-gray-600">Add learning material for students</p>
             </div>
           </div>
         </div>
@@ -200,13 +200,13 @@ export default function CreateMaterialPage() {
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-2">
-              Judul Materi *
+              Material Title *
             </label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-              placeholder="Contoh: Persamaan Linear"
+              placeholder="Example: Linear Equations"
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
@@ -224,7 +224,7 @@ export default function CreateMaterialPage() {
               required
             >
               {chapters.length === 0 ? (
-                <option value="">Belum ada chapter</option>
+                <option value="">No chapters available</option>
               ) : (
                 chapters.map((chapter) => (
                   <option key={chapter.id} value={chapter.id}>
@@ -236,7 +236,7 @@ export default function CreateMaterialPage() {
 
             {chapters.length === 0 && (
               <p className="text-sm text-red-600 mt-1">
-                Harap buat chapter terlebih dahulu di database
+                Please create a chapter in the database first
               </p>
             )}
           </div>
@@ -244,7 +244,7 @@ export default function CreateMaterialPage() {
           {/* Difficulty */}
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-2">
-              Tingkat Kesulitan *
+              Difficulty Level *
             </label>
             <div className="flex gap-4">
               {(['EASY', 'MEDIUM', 'HARD'] as const).map((level) => (
@@ -271,12 +271,12 @@ export default function CreateMaterialPage() {
           {/* Content */}
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-2">
-              Konten Materi *
+              Material Content *
             </label>
 
             <div className="flex items-center justify-between gap-3 mb-2">
               <p className="text-sm text-gray-600">
-                Kamu bisa refine konten dengan AI (opsional), lalu review sebelum simpan.
+                You can refine content with AI (optional), then review before saving.
               </p>
               <button
                 type="button"
@@ -284,27 +284,28 @@ export default function CreateMaterialPage() {
                 disabled={isLoading || isRefining}
                 className="px-3 py-2 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isRefining ? 'Refining…' : 'Refine dengan AI'}
+                {isRefining ? 'Refining…' : 'Refine with AI'}
               </button>
             </div>
 
             <textarea
               value={formData.content}
               onChange={(e) => setFormData((prev) => ({ ...prev, content: e.target.value }))}
-              placeholder="Tulis konten materi di sini..."
+
+              placeholder="Write material content here..."
               rows={12}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
               required
             />
             <p className="text-sm text-gray-500 mt-1">
-              Konten ini akan digunakan untuk generate quiz AI
+              This content will be used to generate AI quizzes
             </p>
           </div>
 
           {/* Image Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-2">
-              Gambar Ilustrasi (Opsional)
+              Illustration Image (Optional)
             </label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
               {imagePreview ? (
@@ -323,14 +324,14 @@ export default function CreateMaterialPage() {
                     }}
                     className="text-red-600 hover:text-red-700 text-sm"
                   >
-                    Hapus gambar
+                    Remove image
                   </button>
                 </div>
               ) : (
                 <div>
                   <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <label className="cursor-pointer text-blue-600 hover:text-blue-700">
-                    <span>Pilih gambar</span>
+                    <span>Choose image</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -338,7 +339,7 @@ export default function CreateMaterialPage() {
                       className="hidden"
                     />
                   </label>
-                  <p className="text-sm text-gray-500 mt-2">PNG, JPG, atau GIF (Maks. 5MB)</p>
+                  <p className="text-sm text-gray-500 mt-2">PNG, JPG, or GIF (Max 5MB)</p>
                 </div>
               )}
             </div>
@@ -350,7 +351,7 @@ export default function CreateMaterialPage() {
               href="/teacher/dashboard"
               className="px-6 py-2 text-gray-700 hover:text-gray-900 transition-colors"
             >
-              Batal
+              Cancel
             </Link>
             <button
               type="submit"
@@ -360,12 +361,12 @@ export default function CreateMaterialPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Menyimpan...
+                  Saving...
                 </>
               ) : (
                 <>
                   <Save className="w-5 h-5" />
-                  Simpan Materi
+                  Save Material
                 </>
               )}
             </button>

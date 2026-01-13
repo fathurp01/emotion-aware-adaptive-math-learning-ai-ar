@@ -60,6 +60,35 @@ const zBalanceScaleOverlay = z
   })
   .strict();
 
+const zNumberLineOverlay = z
+  .object({
+    kind: z.literal('number_line_overlay'),
+    start: zNumber,
+    jumps: z.array(zNumber).default([]),
+    min: zNumber.optional(),
+    max: zNumber.optional(),
+  })
+  .strict();
+
+const zFractionBlocksOverlay = z
+  .object({
+    kind: z.literal('fraction_blocks_overlay'),
+    fractions: z.array(z.string().regex(/^-?\d+\/\d+$/)).min(1).max(4),
+  })
+  .strict();
+
+const zAlgebraTilesOverlay = z
+  .object({
+    kind: z.literal('algebra_tiles_overlay'),
+    tiles: z.object({
+      x2: zNumber.int(),
+      x: zNumber.int(),
+      constant: zNumber.int(),
+    }),
+    label: z.string().optional(),
+  })
+  .strict();
+
 const zGenericOverlay = z
   .object({
     kind: z.literal('generic'),
@@ -67,7 +96,14 @@ const zGenericOverlay = z
   })
   .strict();
 
-const zArOverlay = z.union([zGraph2dLinearSystemOverlay, zBalanceScaleOverlay, zGenericOverlay]);
+const zArOverlay = z.union([
+  zGraph2dLinearSystemOverlay,
+  zBalanceScaleOverlay,
+  zNumberLineOverlay,
+  zFractionBlocksOverlay,
+  zAlgebraTilesOverlay,
+  zGenericOverlay,
+]);
 
 const zArTemplate = z.enum([
   'balance_scale',
@@ -117,7 +153,7 @@ function normalizeRecipe(candidate: Partial<ArRecipe>, fallbackTitle: string): A
     shortGoal:
       typeof candidate.shortGoal === 'string' && candidate.shortGoal.trim()
         ? candidate.shortGoal.trim()
-        : 'Latihan interaktif singkat.',
+        : 'Short interactive exercise.',
     steps: steps.map((s) => String(s).trim()).filter(Boolean).slice(0, 6),
     overlay: normalizeOverlay(candidate.overlay, template),
   };
@@ -144,25 +180,28 @@ async function aiValidateAndFixArRecipe(
   systemRecipe: ArRecipe
 ): Promise<{ ok: true } | { ok: false; corrected?: ArRecipe; reason: string }> {
   const prompt = [
-    'Kamu adalah VALIDATOR konfigurasi AR (sangat ketat).',
-    'Tugas: bandingkan 2 JSON:',
-    '- aiRecipeRaw: hasil AI sebelumnya (mungkin tidak rapi)',
-    '- systemRecipe: hasil normalisasi + validasi dari sistem (ini yang akan dipakai renderer).',
+    'You are a VALIDATOR for AR configuration (very strict).',
+    'Task: compare 2 JSONs:',
+    '- aiRecipeRaw: previous AI result (maybe messy)',
+    '- systemRecipe: system normalized + validated result (this will be used by renderer).',
     '',
-    'Cek:',
-    '1) systemRecipe sesuai schema & dapat dirender oleh sistem tanpa error.',
-    '2) systemRecipe konsisten dengan maksud aiRecipeRaw (template & overlay tidak bertentangan).',
-    '3) Untuk SPLDV/sistem persamaan: jika ada 2 persamaan, gunakan template graph_2d + overlay.kind graph_2d_linear_system, dan isi koefisien eq1/eq2.',
+    'Check:',
+    '1) systemRecipe conforms to schema & can be rendered by system without error.',
+    '2) systemRecipe is consistent with aiRecipeRaw intent (template & overlay do not contradict).',
+    '3) For SPLDV/system of equations: if there are 2 equations, use template graph_2d + overlay.kind graph_2d_linear_system, and fill eq1/eq2 coefficients.',
     '',
-    'Keluaran HARUS JSON valid TANPA markdown, bentuknya salah satu:',
+    'Output MUST be valid JSON WITHOUT markdown, one of:',
     '{"status":"ok"}',
     '{"status":"fix","reason":"...","recipe":{...}}',
     '',
-    'Schema recipe ketat:',
+    'Strict recipe schema:',
     '{"version":1,"template":"balance_scale|number_line|graph_2d|fraction_blocks|algebra_tiles|generic_overlay","title":"...","shortGoal":"...","steps":[...],"overlay":{...}}',
-    'Schema overlay ketat:',
+    'Strict overlay schema:',
     '- graph_2d_linear_system: {"kind":"graph_2d_linear_system","eq1":{"a":number,"b":number,"c":number},"eq2":{"a":number,"b":number,"c":number}?,"xRange":[min,max]?,"yRange":[min,max]?,"showIntersection":true?,"showGrid":true?}',
     '- balance_scale_equation: {"kind":"balance_scale_equation","left":"string","right":"string","highlight":"string"?}',
+    '- number_line_overlay: {"kind":"number_line_overlay","start":number,"jumps":[number...],"min":number?,"max":number?}',
+    '- fraction_blocks_overlay: {"kind":"fraction_blocks_overlay","fractions":["1/2","3/4"...]}',
+    '- algebra_tiles_overlay: {"kind":"algebra_tiles_overlay","tiles":{"x2":number,"x":number,"constant":number},"label":"string"?}',
     '- generic: {"kind":"generic","note":"string"?}',
     '',
     'aiRecipeRaw:',
@@ -180,7 +219,7 @@ async function aiValidateAndFixArRecipe(
 
   const reason = typeof parsed?.reason === 'string' && parsed.reason.trim()
     ? parsed.reason.trim()
-    : 'Validator meminta perbaikan.';
+    : 'Validator requested fix.';
 
   if (parsed?.status === 'fix' && parsed.recipe) {
     const maybe = normalizeRecipe(parsed.recipe as Partial<ArRecipe>, systemRecipe.title);
@@ -210,13 +249,13 @@ export function audioScriptFallback(title: string, content: string): string {
 
 function inferTemplate(content: string): ArTemplate {
   const t = stripText(content).toLowerCase();
-  // SPLDV/SPLTV or explicit “sistem persamaan” is best represented as a graph overlay (two lines + intersection)
-  if (/sistem persamaan|spldv|spl\s*dv|dua variabel|x\s*dan\s*y/.test(t)) return 'graph_2d';
-  if (/pecahan|fraction|perbandingan|rasio/.test(t)) return 'fraction_blocks';
-  if (/grafik|koordinat|cartesius|gradien|garis lurus|fungsi/.test(t)) return 'graph_2d';
-  if (/persamaan|sistem persamaan|spltv|spldv|linear/.test(t)) return 'balance_scale';
-  if (/bilangan|garis bilangan|positif|negatif|integer|operasi hitung/.test(t)) return 'number_line';
-  if (/faktorisasi|aljabar|variabel|x\b|y\b/.test(t)) return 'algebra_tiles';
+  // SPLDV/SPLTV or explicit "system of equations" is best represented as a graph overlay (two lines + intersection)
+  if (/system of equations|spldv|spl\s*dv|two variables|x\s*and\s*y|simultaneous equations/.test(t)) return 'graph_2d';
+  if (/fraction|ratio|proportion/.test(t)) return 'fraction_blocks';
+  if (/graph|coordinate|cartesian|gradient|straight line|function/.test(t)) return 'graph_2d';
+  if (/equation|system of equations|spltv|spldv|linear/.test(t)) return 'balance_scale';
+  if (/number|number line|positive|negative|integer|arithmetic operation/.test(t)) return 'number_line';
+  if (/factorization|algebra|variable|x\b|y\b/.test(t)) return 'algebra_tiles';
   return 'generic_overlay';
 }
 
@@ -232,20 +271,45 @@ export function arRecipeFallback(title: string, content: string): ArRecipe {
     .filter((s) => s.length >= 12)
     .slice(0, 5)
     .map((s, i) => {
-      const lead = i === 0 ? 'Amati' : i === 1 ? 'Coba' : 'Lanjutkan';
+      const lead = i === 0 ? 'Observe' : i === 1 ? 'Try' : 'Continue';
       return `${lead}: ${s}`;
     });
+
+  let overlay: JsonObject;
+  
+  switch (template) {
+    case 'balance_scale':
+      overlay = { kind: 'balance_scale_equation', left: '2x + 1', right: '5' } as unknown as JsonObject;
+      break;
+    case 'number_line':
+      overlay = { kind: 'number_line_overlay', start: 0, jumps: [2, 3], min: -2, max: 8 } as unknown as JsonObject;
+      break;
+    case 'fraction_blocks':
+      overlay = { kind: 'fraction_blocks_overlay', fractions: ['1/2', '1/3'] } as unknown as JsonObject;
+      break;
+    case 'algebra_tiles':
+      overlay = { kind: 'algebra_tiles_overlay', tiles: { x2: 1, x: 2, constant: 1 } } as unknown as JsonObject;
+      break;
+    case 'graph_2d':
+      overlay = { 
+        kind: 'graph_2d_linear_system', 
+        eq1: { a: 1, b: -1, c: 0 }, // x - y = 0
+        eq2: { a: 1, b: 1, c: 4 },  // x + y = 4 => (2,2)
+        showIntersection: true 
+      } as unknown as JsonObject;
+      break;
+    default:
+      overlay = { kind: 'generic', note: String(template) } as unknown as JsonObject;
+      break;
+  }
 
   return {
     version: 1,
     template,
     title,
-    shortGoal: 'Latihan interaktif singkat dengan kamera + overlay.',
-    steps: steps.length ? steps : ['Amati: Baca konsep inti pada teks.', 'Coba: Kerjakan 1 contoh soal.', 'Lanjutkan: Ubah angka pada contoh dan amati perubahan.'],
-    overlay:
-      template === 'balance_scale'
-        ? ({ kind: 'balance_scale_equation', left: '…', right: '…' } as unknown as JsonObject)
-        : ({ kind: 'generic', note: String(template) } as unknown as JsonObject),
+    shortGoal: 'Short interactive exercises with camera + overlay.',
+    steps: steps.length ? steps : ['Observe: Read core concepts in text.', 'Try: Work on 1 example problem.', 'Continue: Change numbers in example and observe changes.'],
+    overlay,
   };
 }
 
@@ -259,17 +323,17 @@ function extractJson(text: string): string {
 
 export async function generateAudioScript(title: string, content: string): Promise<string> {
   const prompt = [
-    'Kamu adalah asisten guru matematika SMP.',
-    'Tugas: buat naskah audio (untuk TTS) dari materi berikut.',
-    'Aturan:',
-    '- Bahasa Indonesia, jelas, ramah, tidak menambah fakta baru.',
-    '- Fokus membacakan isi yang ada dengan struktur yang enak didengar.',
-    '- Maksimal 1200 karakter.',
-    '- Output hanya teks naskah, tanpa markdown, tanpa bullet aneh.',
+    'You are a middle school math teacher assistant.',
+    'Task: create audio script (for TTS) from the following material.',
+    'Rules:',
+    '- English, clear, friendly, do not add new facts.',
+    '- Focus on reading the existing content with a structure that is pleasant to hear.',
+    '- Max 1200 characters.',
+    '- Output only script text, no markdown, no weird bullets.',
     '',
-    `JUDUL: ${title}`,
+    `TITLE: ${title}`,
     '',
-    'MATERI:',
+    'MATERIAL:',
     stripText(content).slice(0, 6000),
   ].join('\n');
 
@@ -285,39 +349,39 @@ export async function generateAudioScript(title: string, content: string): Promi
 export async function generateArRecipe(title: string, content: string): Promise<ArRecipe> {
   const suggestedTemplate = inferTemplate(content);
   const hint = stripText(content).toLowerCase();
-  const looksLikeSystem = /sistem persamaan|spldv|spl\s*dv|dua variabel/.test(hint);
+  const looksLikeSystem = /system of equations|spldv|spl\s*dv|two variables/.test(hint);
   const basePrompt = [
-    'Kamu adalah perancang aktivitas WebAR untuk matematika SMP.',
-    'Buat 1 AR recipe berbasis template (bukan 3D bebas).',
-    'Pilih salah satu template ini saja:',
-    '- balance_scale (untuk persamaan)',
-    '- number_line (bilangan/operasi)',
-    '- graph_2d (grafik garis lurus sederhana)',
-    '- fraction_blocks (pecahan)',
-    '- algebra_tiles (variabel/aljabar)',
+    'You are a WebAR activity designer for middle school math.',
+    'Create 1 AR recipe based on template (no free 3D).',
+    'Choose only one of these templates suitable for the MATERIAL:',
+    '- balance_scale (equations, left=right)',
+    '- number_line (integer operations)',
+    '- graph_2d (linear functions, systems)',
+    '- fraction_blocks (visualizing fractions)',
+    '- algebra_tiles (polynomials, factoring)',
     '- generic_overlay (fallback)',
     '',
-    'PENTING: Output HARUS JSON valid (tanpa markdown).',
-    'Struktur WAJIB:',
+    'IMPORTANT: Output MUST be valid JSON (no markdown).',
+    'MANDATORY Structure:',
     '{"version":1,"template":"...","title":"...","shortGoal":"...","steps":["..."],"overlay":{...}}',
-    'Aturan:',
-    '- steps 3-6 langkah, kalimat singkat, actionable.',
-    '- Jangan menambah konsep yang tidak ada di materi.',
-    '- overlay HARUS mengikuti schema template berikut (ketat).',
-    looksLikeSystem
-      ? '- Karena materi mengarah ke SPLDV/sistem persamaan, PILIH template "graph_2d" dan isi overlay "graph_2d_linear_system" dengan eq1 + eq2 jika ada dua persamaan.'
-      : '- Jika materi hanya membahas 1 persamaan, kamu boleh pilih balance_scale.',
+    'Rules:',
+    '- steps 3-6 steps, short sentences, actionable.',
+    '- Do not add concepts that are not in the material.',
+    '- overlay MUST follow the template schema below (strict).',
     '',
-    'SCHEMA overlay (ketat):',
+    'Overlay SCHEMA (strict):',
     '- graph_2d_linear_system: {"kind":"graph_2d_linear_system","eq1":{"a":number,"b":number,"c":number},"eq2":{"a":number,"b":number,"c":number}?,"xRange":[min,max]?,"yRange":[min,max]?,"showIntersection":true?,"showGrid":true?}',
-    '- balance_scale_equation: {"kind":"balance_scale_equation","left":"string","right":"string","highlight":"string"?}',
+    '- balance_scale_equation: {"kind":"balance_scale_equation","left":"string expression","right":"string expression","highlight":"string hint?"}',
+    '- number_line_overlay: {"kind":"number_line_overlay","start":number,"jumps":[...],"min":number?,"max":number?}',
+    '- fraction_blocks_overlay: {"kind":"fraction_blocks_overlay","fractions":["1/2","3/4"...] (max 4)}',
+    '- algebra_tiles_overlay: {"kind":"algebra_tiles_overlay","tiles":{"x2":number,"x":number,"constant":number},"label":"string"?}',
     '- generic: {"kind":"generic","note":"string"?}',
     '',
-    `Saran template (boleh diikuti jika cocok): ${suggestedTemplate}`,
+    `Suggested template (may follow if suitable): ${suggestedTemplate}`,
     '',
-    `JUDUL: ${title}`,
+    `TITLE: ${title}`,
     '',
-    'MATERI:',
+    'MATERIAL:',
     stripText(content).slice(0, 7000),
   ].join('\n');
 
@@ -333,10 +397,10 @@ export async function generateArRecipe(title: string, content: string): Promise<
         : [
             basePrompt,
             '',
-            'CATATAN perbaikan dari validator sebelumnya:',
-            lastReason || '(tidak ada)',
+            'NOTE corrections from previous validator:',
+            lastReason || '(none)',
             '',
-            'Tolong generate ulang JSON yang benar dan sesuai schema.',
+            'Please re-generate correct JSON that conforms to schema.',
           ].join('\n');
 
     try {
@@ -347,7 +411,7 @@ export async function generateArRecipe(title: string, content: string): Promise<
 
       const systemRecipe = normalizeRecipe(parsed, title);
       if (!systemRecipe) {
-        lastReason = 'Normalisasi/validasi schema gagal.';
+        lastReason = 'Normalization/schema validation failed.';
         continue;
       }
 
@@ -366,7 +430,7 @@ export async function generateArRecipe(title: string, content: string): Promise<
         lastSystem = verdict.corrected;
       }
     } catch (e) {
-      lastReason = e instanceof Error ? e.message : 'Gagal generate AR recipe';
+      lastReason = e instanceof Error ? e.message : 'Failed to generate AR recipe';
       continue;
     }
   }
@@ -392,37 +456,37 @@ export async function generateArExplanation(input: {
   const overlayKind = typeof recipe?.overlay?.kind === 'string' ? recipe.overlay.kind : undefined;
 
   const prompt = [
-    'Kamu adalah tutor yang menjelaskan tampilan AR kepada pemula (singkat dan padat).',
-    'Buat penjelasan 2-4 kalimat dalam Bahasa Indonesia, tanpa bullet, tanpa markdown.',
-    'Tujuan: orang yang baru belajar langsung paham apa yang terlihat di AR dan artinya.',
-    'Jangan bahas teknis WebXR/camera. Fokus pada makna visualnya.',
+    'You are a tutor explaining AR view to a beginner (concise and compact).',
+    'Create a 2-4 sentence explanation in English, no bullets, no markdown.',
+    'Goal: user who just learned immediately understands what is seen in AR and its meaning.',
+    'Do not discuss technical WebXR/camera. Focus on visual meaning.',
     '',
-    'Jika template = graph_2d dan overlay.kind = graph_2d_linear_system:',
-    '- Jelaskan bahwa dua garis merepresentasikan dua persamaan',
-    '- Titik potong = solusi (x,y)',
-    '- Sebutkan warna garis merah/biru jika relevan',
+    'If template = graph_2d and overlay.kind = graph_2d_linear_system:',
+    '- Explain that two lines represent two equations',
+    '- Intersection point = solution (x,y)',
+    '- Mention red/blue lines if relevant',
     '',
-    'Jika template = balance_scale:',
-    '- Jelaskan kiri/kanan seimbang sebagai persamaan',
-    '- Tujuan menyeimbangkan operasi di kedua sisi',
+    'If template = balance_scale:',
+    '- Explain left/right balance as equation',
+    '- Goal is to balance operations on both sides',
     '',
-    'Jika template = number_line:',
-    '- Jelaskan garis bilangan & perpindahan kiri/kanan',
+    'If template = number_line:',
+    '- Explain number line & move left/right',
     '',
-    'Jika template = fraction_blocks:',
-    '- Jelaskan blok pecahan sebagai bagian dari keseluruhan',
+    'If template = fraction_blocks:',
+    '- Explain fraction blocks as parts of a whole',
     '',
-    'Jika template = algebra_tiles:',
-    '- Jelaskan ubin mewakili x², x, dan 1 untuk menyusun bentuk aljabar',
+    'If template = algebra_tiles:',
+    '- Explain tiles represent x², x, and 1 to build algebraic expressions',
     '',
-    `Judul materi: ${title}`,
+    `Material Title: ${title}`,
     `Template: ${template}`,
     `Overlay kind: ${overlayKind || '-'}`,
     '',
     'AR recipe JSON:',
     JSON.stringify(arRecipe),
     '',
-    'Cuplikan materi (ringkas):',
+    'Material Snippet (concise):',
     stripText(content).slice(0, 1200),
   ].join('\n');
 
@@ -440,19 +504,19 @@ export async function generateArExplanation(input: {
 
   // Deterministic fallback (no AI)
   if (template === 'graph_2d') {
-    return 'Grafik ini menampilkan persamaan sebagai garis. Jika ada dua garis, titik perpotongannya adalah solusi (x,y) yang memenuhi kedua persamaan.';
+    return 'This graph displays equations as lines. If there are two lines, the intersection point is the solution (x,y) satisfying both equations.';
   }
   if (template === 'balance_scale') {
-    return 'Timbangan menggambarkan persamaan: sisi kiri dan kanan harus seimbang. Saat kamu mengubah satu sisi, lakukan hal yang sama pada sisi lain agar tetap setara.';
+    return 'The scale represents an equation: both sides must be balanced. When you change one side, do the same to the other side to keep it equal.';
   }
   if (template === 'number_line') {
-    return 'Garis bilangan membantu melihat operasi sebagai pergeseran: ke kanan untuk bertambah dan ke kiri untuk berkurang. Titik akhir menunjukkan hasilnya.';
+    return 'The number line helps visualize operations as shifts: to the right for addition and to the left for subtraction. The end point shows the result.';
   }
   if (template === 'fraction_blocks') {
-    return 'Blok pecahan menunjukkan bagian dari satu keseluruhan. Bagian yang diwarnai membantu membandingkan dan menyederhanakan pecahan secara visual.';
+    return 'Fraction blocks show parts of a whole. Colored parts help compare and simplify fractions visually.';
   }
   if (template === 'algebra_tiles') {
-    return 'Ubin aljabar mewakili x², x, dan 1. Dengan menyusun dan mengelompokkan ubin, kamu bisa melihat bentuk aljabar dan penyederhanaannya secara visual.';
+    return 'Algebra tiles represent x², x, and 1. By arranging and grouping tiles, you can see algebraic forms and their simplification visually.';
   }
-  return 'Tampilan AR ini membantu kamu memahami konsep dengan visual sederhana. Ikuti petunjuk yang muncul untuk menghubungkan gambar dengan langkah penyelesaian.';
+  return 'This AR view helps you understand concepts with simple visuals. Follow the on-screen instructions to connect the image with solution steps.';
 }

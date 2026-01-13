@@ -100,7 +100,7 @@ export default function TeacherDashboard() {
           <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center gap-3 mb-2">
               <Users className="w-8 h-8 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">Total Siswa</h3>
+              <h3 className="font-semibold text-gray-900">Total Students</h3>
             </div>
             <p className="text-3xl font-bold text-blue-600">{students.length}</p>
           </div>
@@ -108,16 +108,16 @@ export default function TeacherDashboard() {
           <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center gap-3 mb-2">
               <AlertTriangle className="w-8 h-8 text-red-600" />
-              <h3 className="font-semibold text-gray-900">Siswa Berisiko</h3>
+              <h3 className="font-semibold text-gray-900">At-Risk Students</h3>
             </div>
             <p className="text-3xl font-bold text-red-600">{riskCount}</p>
-            <p className="text-xs text-gray-500 mt-1">Heuristik: &gt;60% emosi negatif (20 log terakhir)</p>
+            <p className="text-xs text-gray-500 mt-1">Heuristic: &gt;60% negative emotion (last 20 logs)</p>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center gap-3 mb-2">
               <BookOpen className="w-8 h-8 text-green-600" />
-              <h3 className="font-semibold text-gray-900">Materi</h3>
+              <h3 className="font-semibold text-gray-900">Materials</h3>
             </div>
             <p className="text-3xl font-bold text-green-600">{materialsCount}</p>
             <p className="text-xs text-gray-500 mt-1">Refine/Published: {refinedCount}</p>
@@ -130,13 +130,13 @@ export default function TeacherDashboard() {
             </div>
             <div className="flex flex-col gap-1">
               <Link href="/teacher/students" className="text-purple-700 hover:underline">
-                Kelola siswa →
+                Manage students →
               </Link>
               <Link href="/teacher/materials" className="text-purple-700 hover:underline">
-                Kelola materi →
+                Manage materials →
               </Link>
               <Link href="/teacher/analytics" className="text-purple-700 hover:underline">
-                Lihat analitik →
+                View analytics →
               </Link>
             </div>
           </div>
@@ -147,14 +147,14 @@ export default function TeacherDashboard() {
         <div className="p-6 border-b">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Ringkasan Siswa</h2>
-              <p className="text-gray-600 text-sm">Lihat detail lengkap di menu “Siswa”.</p>
+              <h2 className="text-xl font-bold text-gray-900">Student Summary</h2>
+              <p className="text-gray-600 text-sm">View full details in &apos;Students&apos; menu.</p>
             </div>
             <Link
               href="/teacher/students"
               className="text-sm text-blue-700 hover:underline"
             >
-              Buka halaman Siswa →
+              Open Students page →
             </Link>
           </div>
         </div>
@@ -162,7 +162,7 @@ export default function TeacherDashboard() {
           {students.length === 0 ? (
             <div className="p-12 text-center">
               <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600">Belum ada siswa terdaftar</p>
+              <p className="text-gray-600">No students registered</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -170,16 +170,16 @@ export default function TeacherDashboard() {
                 <thead className="bg-gray-50 border-b">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nama
+                      Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Gaya Belajar
+                      Learning Style
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Log Emosi
+                      Emotion Logs
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
@@ -195,7 +195,7 @@ export default function TeacherDashboard() {
                           {student.hasHighAnxiety && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">
                               <AlertTriangle className="w-3 h-3" />
-                              Risiko Tinggi
+                              High Risk
                             </span>
                           )}
                         </div>
@@ -205,7 +205,7 @@ export default function TeacherDashboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                          {student.learningStyle || 'Belum ditentukan'}
+                          {student.learningStyle || 'Not set'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-600">
@@ -213,7 +213,7 @@ export default function TeacherDashboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {student.hasHighAnxiety ? (
-                          <span className="text-red-600 font-medium">Butuh Perhatian</span>
+                          <span className="text-red-600 font-medium">Needs Attention</span>
                         ) : (
                           <span className="text-green-600 font-medium">Normal</span>
                         )}

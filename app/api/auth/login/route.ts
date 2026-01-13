@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Email atau password salah' },
+        { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
@@ -54,9 +54,9 @@ export async function POST(request: NextRequest) {
       user.password
     );
 
-    if (!isValidPassword) {
+      if (!isValidPassword) {
       return NextResponse.json(
-        { error: 'Email atau password salah' },
+        { error: 'Invalid email or password' },
         { status: 401 }
       );
     }

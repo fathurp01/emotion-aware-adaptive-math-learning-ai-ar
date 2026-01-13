@@ -1,50 +1,50 @@
 # Emotion Model Assets
 
-Taruh model TensorFlow.js hasil training (MobileNetV2 transfer learning / fine-tuning) di folder ini.
+Place the trained TensorFlow.js model (MobileNetV2 transfer learning / fine-tuning) in this folder.
 
-## Default path yang dipakai aplikasi
+## Default path used by the application
 
 - `public/model/tfjs_model/model.json`
 - `public/model/tfjs_model/metadata.json`
-- file bobot (biasanya) `public/model/group1-shard*.bin` atau `weights.bin`
+- weight files (usually) `public/model/group1-shard*.bin` or `weights.bin`
 
-Frontend akan load:
+Frontend will load:
 - Model: `/model/tfjs_model/model.json`
 - Metadata: `/model/tfjs_model/metadata.json`
 
-## Catatan penting
+## Important Notes
 
-- File `.bin` harus berada di lokasi yang direferensikan oleh `model.json`.
-  Biasanya semua file bobot berada di folder yang sama dengan `model.json`.
-- `metadata.json` harus berisi `labels` dengan urutan yang sama persis seperti output model.
+- `.bin` files must be in the location referenced by `model.json`.
+  Usually all weight files are in the same folder as `model.json`.
+- `metadata.json` must contain `labels` in the exact order as the model output.
 
-## Jika habis export dan model gagal load
+## If export finishes and model fails to load
 
-Kadang hasil `tensorflowjs_converter` (terutama dari Keras v3) menghasilkan `model.json` dengan key `batch_shape` pada `InputLayer`, sementara `tfjs-layers` di browser butuh `batchInputShape`/`inputShape`.
+Sometimes `tensorflowjs_converter` output (especially from Keras v3) produces `model.json` with `batch_shape` key in `InputLayer`, while `tfjs-layers` in browser needs `batchInputShape`/`inputShape`.
 
-Kalau di browser muncul error seperti:
+If errors like this appear in the browser:
 
 `ValueError: An InputLayer should be passed either a batchInputShape or an inputShape`
 
-jalankan ini (akan otomatis patch + cek file shard .bin ada):
+run this (will automatically patch + check shard .bin exists):
 
 ```bash
 npm run model:patch-tfjs
 ```
 
-Contoh format metadata:
+Metadata format example:
 
 ```json
 { "labels": ["Neutral","Happy","Anxious","Confused","Frustrated","Sad","Surprised"] }
 ```
 
-## Override lokasi model (opsional)
+## Override model location (optional)
 
-Kamu bisa override URL/path via `.env`:
+You can override URL/path via `.env`:
 
 ```env
 NEXT_PUBLIC_EMOTION_MODEL_URL=/model/tfjs_model/model.json
 NEXT_PUBLIC_EMOTION_METADATA_URL=/model/tfjs_model/metadata.json
-# atau jika tidak ada metadata.json:
+# or if metadata.json is missing:
 NEXT_PUBLIC_EMOTION_LABELS=Negative,Neutral,Positive
 ```

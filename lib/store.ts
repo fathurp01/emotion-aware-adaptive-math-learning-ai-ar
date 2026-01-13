@@ -144,6 +144,7 @@ export const useEmotionStore = create<EmotionStore>()(
             emotionHistory: [],
             isCamActive: false,
             isModelLoaded: false,
+            authChecked: false, // Ensure auth check is reset
           });
 
           // Ensure persisted auth is cleared (prevents immediate re-login on refresh)

@@ -41,10 +41,10 @@ export default function TeacherChaptersPage() {
       try {
         const res = await fetch('/api/teacher/chapters/stats');
         const json = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(json?.error || 'Gagal memuat chapter');
+        if (!res.ok) throw new Error(json?.error || 'Failed to load chapters');
         setItems(Array.isArray(json) ? (json as ChapterStat[]) : []);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Gagal memuat chapter');
+        setError(e instanceof Error ? e.message : 'Failed to load chapters');
       } finally {
         setLoading(false);
       }
@@ -59,7 +59,7 @@ export default function TeacherChaptersPage() {
         <div className="bg-white rounded-lg shadow-sm p-6 border">
           <div className="flex items-center gap-3 mb-2">
             <Layers className="w-8 h-8 text-blue-600" />
-            <h3 className="font-semibold text-gray-900">Total Chapter</h3>
+            <h3 className="font-semibold text-gray-900">Total Chapters</h3>
           </div>
           <p className="text-3xl font-bold text-blue-600">{items.length}</p>
         </div>
@@ -67,7 +67,7 @@ export default function TeacherChaptersPage() {
         <div className="bg-white rounded-lg shadow-sm p-6 border">
           <div className="flex items-center gap-3 mb-2">
             <Layers className="w-8 h-8 text-green-600" />
-            <h3 className="font-semibold text-gray-900">Total Materi</h3>
+            <h3 className="font-semibold text-gray-900">Total Materials</h3>
           </div>
           <p className="text-3xl font-bold text-green-600">{totalMaterials}</p>
         </div>
@@ -75,27 +75,27 @@ export default function TeacherChaptersPage() {
 
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-900">Daftar Chapter</h2>
-          <p className="text-gray-600 text-sm">Ringkasan chapter dan jumlah materi di masing-masing chapter.</p>
+          <h2 className="text-xl font-bold text-gray-900">Chapters List</h2>
+          <p className="text-gray-600 text-sm">Chapter summary and material counts.</p>
         </div>
 
         {loading ? (
           <div className="p-10 flex items-center justify-center gap-3 text-gray-600">
             <Loader2 className="w-5 h-5 animate-spin" />
-            Memuat...
+            Loading...
           </div>
         ) : error ? (
           <div className="p-10 text-center text-red-700">{error}</div>
         ) : items.length === 0 ? (
-          <div className="p-12 text-center text-gray-600">Belum ada chapter</div>
+          <div className="p-12 text-center text-gray-600">No chapters yet</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Urutan</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah Materi</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material Count</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Update</th>
                 </tr>
               </thead>
@@ -120,7 +120,7 @@ export default function TeacherChaptersPage() {
       </div>
 
       <div className="text-xs text-gray-500">
-        Catatan: pembuatan chapter saat ini lewat database/seed. Kalau kamu mau, saya bisa tambahkan UI “Tambah/Edit Chapter”.
+        Note: chapter creation is currently via database/seed. I can add &quot;Add/Edit Chapter&quot; UI if requested.
       </div>
     </div>
   );

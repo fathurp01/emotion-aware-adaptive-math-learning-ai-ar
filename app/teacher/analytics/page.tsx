@@ -92,7 +92,7 @@ export default function TeacherAnalyticsPage() {
         <div className="bg-white rounded-lg shadow-sm p-6 border">
           <div className="flex items-center gap-3 mb-2">
             <Users className="w-7 h-7 text-blue-600" />
-            <h3 className="font-semibold text-gray-900">Siswa</h3>
+            <h3 className="font-semibold text-gray-900">Students</h3>
           </div>
           <p className="text-3xl font-bold text-blue-600">{students.length}</p>
         </div>
@@ -100,16 +100,16 @@ export default function TeacherAnalyticsPage() {
         <div className="bg-white rounded-lg shadow-sm p-6 border">
           <div className="flex items-center gap-3 mb-2">
             <AlertTriangle className="w-7 h-7 text-red-600" />
-            <h3 className="font-semibold text-gray-900">Risiko Tinggi</h3>
+            <h3 className="font-semibold text-gray-900">High Risk</h3>
           </div>
           <p className="text-3xl font-bold text-red-600">{riskCount}</p>
-          <p className="text-xs text-gray-500 mt-1">Heuristik: &gt;60% emosi negatif (20 log terakhir)</p>
+          <p className="text-xs text-gray-500 mt-1">Heuristic: &gt;60% negative emotion (last 20 logs)</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6 border">
           <div className="flex items-center gap-3 mb-2">
             <BookOpen className="w-7 h-7 text-green-600" />
-            <h3 className="font-semibold text-gray-900">Materi</h3>
+            <h3 className="font-semibold text-gray-900">Materials</h3>
           </div>
           <p className="text-3xl font-bold text-green-600">{materials.length}</p>
         </div>
@@ -117,7 +117,7 @@ export default function TeacherAnalyticsPage() {
         <div className="bg-white rounded-lg shadow-sm p-6 border">
           <div className="flex items-center gap-3 mb-2">
             <BarChart3 className="w-7 h-7 text-purple-600" />
-            <h3 className="font-semibold text-gray-900">Materi Refine</h3>
+            <h3 className="font-semibold text-gray-900">Refined Materials</h3>
           </div>
           <p className="text-3xl font-bold text-purple-600">{refinedCount}</p>
         </div>
@@ -126,17 +126,17 @@ export default function TeacherAnalyticsPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           <div className="p-6 border-b">
-            <h2 className="text-xl font-bold text-gray-900">Distribusi Emosi (Top)</h2>
-            <p className="text-gray-600 text-sm">Berdasarkan log emosi terakhir yang tersedia.</p>
+            <h2 className="text-xl font-bold text-gray-900">Emotion Distribution (Top)</h2>
+            <p className="text-gray-600 text-sm">Based on last available emotion log.</p>
           </div>
 
           {loading ? (
             <div className="p-10 flex items-center justify-center gap-3 text-gray-600">
               <Loader2 className="w-5 h-5 animate-spin" />
-              Memuat...
+              Loading...
             </div>
           ) : emotionDistribution.length === 0 ? (
-            <div className="p-10 text-center text-gray-600">Belum ada data emosi.</div>
+            <div className="p-10 text-center text-gray-600">No emotion data yet.</div>
           ) : (
             <div className="p-6 space-y-3">
               {emotionDistribution.map(([k, v]) => {
@@ -159,17 +159,17 @@ export default function TeacherAnalyticsPage() {
 
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           <div className="p-6 border-b">
-            <h2 className="text-xl font-bold text-gray-900">Siswa Risiko Tinggi</h2>
-            <p className="text-gray-600 text-sm">Daftar ringkas siswa yang butuh perhatian.</p>
+            <h2 className="text-xl font-bold text-gray-900">High Risk Students</h2>
+            <p className="text-gray-600 text-sm">Quick list of students needing attention.</p>
           </div>
 
           {loading ? (
             <div className="p-10 flex items-center justify-center gap-3 text-gray-600">
               <Loader2 className="w-5 h-5 animate-spin" />
-              Memuat...
+              Loading...
             </div>
           ) : topRisk.length === 0 ? (
-            <div className="p-10 text-center text-gray-600">Tidak ada siswa berisiko tinggi.</div>
+            <div className="p-10 text-center text-gray-600">No high-risk students.</div>
           ) : (
             <div className="divide-y">
               {topRisk.map((s) => {
@@ -182,7 +182,7 @@ export default function TeacherAnalyticsPage() {
                         <div className="text-xs text-gray-600">{s.email}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-medium text-red-700">Risiko Tinggi</div>
+                        <div className="text-sm font-medium text-red-700">High Risk</div>
                         <div className="text-xs text-gray-500">{last ? String(last.emotionLabel) : '—'}</div>
                       </div>
                     </div>
@@ -195,7 +195,7 @@ export default function TeacherAnalyticsPage() {
       </div>
 
       <div className="text-xs text-gray-500">
-        Catatan: analitik ini ringan (client-side) untuk demo. Kalau mau lebih “enterprise”, saya bisa buat endpoint agregasi (server-side) dan grafik yang lebih rapi.
+        Note: lightweight analytics for demo. For production, I would add server-side aggregation and better charts.
       </div>
     </div>
   );

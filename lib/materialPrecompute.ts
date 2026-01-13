@@ -27,20 +27,20 @@ function sanitizeRefinedMarkdown(input: string): string {
 
 function buildRefinePrompt(title: string, content: string): string {
   return [
-    'Kamu adalah editor materi matematika SMP.',
-    'Tugas: rapikan dan susun ulang materi berikut agar jelas, runtut, dan lengkap untuk siswa.',
-    'Aturan:',
-    '- Bahasa Indonesia, tidak menambah fakta/konsep baru.',
-    '- Hasil dalam format MARKDOWN yang rapi: judul, tujuan belajar, konsep inti, langkah penyelesaian, minimal 2 contoh, dan 3 latihan + kunci singkat.',
-    '- Minimal 800 kata atau minimal 2500 karakter (jangan terlalu pendek).',
-    '- Jangan membuat halusinasi; jika ada bagian kurang jelas, tulis catatan singkat "(Perlu konfirmasi guru)".',
-    '- Untuk matematika: gunakan delimiter $...$ untuk inline dan $$...$$ untuk blok (hindari \\(...\\) dan \\[...\\]).',
-    '- Jangan bungkus output dengan ```markdown atau ```.',
-    '- Output hanya markdown, tanpa JSON.',
+    'You are a middle school math material editor.',
+    'Task: tidy up and restructure the following material to be clear, coherent, and complete for students.',
+    'Rules:',
+    '- English, do not add new facts/concepts.',
+    '- Result in tidy MARKDOWN format: title, learning objectives, core concepts, solution steps, at least 2 examples, and 3 exercises + Answer Key (strictly in LaTeX format like $x=5$).',
+    '- Minimum 800 words or minimum 2500 characters (do not make it too short).',
+    '- Do not hallucinate; if something is unclear, write a short note "(Needs teacher confirmation)".',
+    '- For math: use delimiter $...$ for inline and $$...$$ for block (avoid \\(...\\) and \\[...\\]).',
+    '- Do not wrap output with ```markdown or ```.',
+    '- Output only markdown, no JSON.',
     '',
-    `JUDUL: ${title}`,
+    `TITLE: ${title}`,
     '',
-    'MATERI ASLI:',
+    'ORIGINAL MATERIAL:',
     stripUnsafe(content).slice(0, 9000),
   ].join('\n');
 }

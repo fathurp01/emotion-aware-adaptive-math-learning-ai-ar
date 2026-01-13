@@ -2,16 +2,16 @@
 
 ## Overview
 
-Sistem logging yang komprehensif untuk tracking semua aktivitas, error, dan request dalam aplikasi.
+Comprehensive logging system for tracking all activities, errors, and requests within the application.
 
 ## Types of Logging
 
 ### 1. Startup Logging
-✅ **Otomatis berjalan saat aplikasi start**
+✅ **Runs automatically at application start**
 
-Lihat [STARTUP_LOGGING.md](STARTUP_LOGGING.md) untuk detail lengkap.
+See [STARTUP_LOGGING.md](STARTUP_LOGGING.md) for full details.
 
-Checks yang dilakukan:
+Checks performed:
 - Database connection
 - AI model availability
 - Environment variables

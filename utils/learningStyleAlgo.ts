@@ -47,43 +47,43 @@ export interface StyleScores {
 export const learningStyleQuestionnaire: Question[] = [
   {
     id: 1,
-    question: 'When learning a new math concept, I prefer to:',
+    question: 'When learning a new math concept, I prefer:',
     options: [
       {
         style: 'VISUAL',
         value: 'visual',
-        text: 'See diagrams, charts, or visual representations',
+        text: 'Looking at diagrams, graphs, or visual representations',
       },
       {
         style: 'AUDITORY',
         value: 'auditory',
-        text: 'Listen to explanations or discuss it with others',
+        text: 'Listening to explanations or discussing it with others',
       },
       {
         style: 'KINESTHETIC',
         value: 'kinesthetic',
-        text: 'Work through practice problems hands-on',
+        text: 'Working on practice problems directly',
       },
     ],
   },
   {
     id: 2,
-    question: 'When solving a math problem, I usually:',
+    question: 'When solving math problems, I usually:',
     options: [
       {
         style: 'VISUAL',
         value: 'visual',
-        text: 'Draw pictures or diagrams to visualize the solution',
+        text: 'Draw sketches or diagrams to visualize the solution',
       },
       {
         style: 'AUDITORY',
         value: 'auditory',
-        text: 'Talk through the steps out loud or in my head',
+        text: 'Say the steps out loud (or in my head)',
       },
       {
         style: 'KINESTHETIC',
         value: 'kinesthetic',
-        text: 'Use objects or write out multiple attempts',
+        text: 'Use objects or write down trial steps',
       },
     ],
   },
@@ -94,44 +94,44 @@ export const learningStyleQuestionnaire: Question[] = [
       {
         style: 'VISUAL',
         value: 'visual',
-        text: 'I see them written down with color coding',
+        text: 'I see them written with color coding',
       },
       {
         style: 'AUDITORY',
         value: 'auditory',
-        text: 'I repeat them to myself multiple times',
+        text: 'I repeat them several times',
       },
       {
         style: 'KINESTHETIC',
         value: 'kinesthetic',
-        text: 'I use them in practice problems repeatedly',
+        text: 'I use them repeatedly in practice problems',
       },
     ],
   },
   {
     id: 4,
-    question: 'When I study for a math test, I:',
+    question: 'When studying for a math exam, I:',
     options: [
       {
         style: 'VISUAL',
         value: 'visual',
-        text: 'Review notes, diagrams, and highlighted materials',
+        text: 'Review notes, diagrams, and highlighted material',
       },
       {
         style: 'AUDITORY',
         value: 'auditory',
-        text: 'Recite formulas and explain concepts aloud',
+        text: 'Repeat formulas and explain concepts out loud',
       },
       {
         style: 'KINESTHETIC',
         value: 'kinesthetic',
-        text: 'Do lots of practice problems and examples',
+        text: 'Work through many examples and practice problems',
       },
     ],
   },
   {
     id: 5,
-    question: 'In a math class, I learn best when the teacher:',
+    question: 'In math class, I learn best when the teacher:',
     options: [
       {
         style: 'VISUAL',
@@ -146,7 +146,7 @@ export const learningStyleQuestionnaire: Question[] = [
       {
         style: 'KINESTHETIC',
         value: 'kinesthetic',
-        text: 'Gives us hands-on activities and practical tasks',
+        text: 'Gives practical activities and real-world tasks',
       },
     ],
   },
@@ -167,13 +167,13 @@ export const learningStyleQuestionnaire: Question[] = [
       {
         style: 'KINESTHETIC',
         value: 'kinesthetic',
-        text: 'Try different approaches until something works',
+        text: 'Try different methods until one works',
       },
     ],
   },
   {
     id: 7,
-    question: 'My ideal study environment for math includes:',
+    question: 'My ideal math learning environment is:',
     options: [
       {
         style: 'VISUAL',
@@ -183,33 +183,33 @@ export const learningStyleQuestionnaire: Question[] = [
       {
         style: 'AUDITORY',
         value: 'auditory',
-        text: 'A quiet place where I can read aloud or discuss',
+        text: 'A quiet place to read aloud or discuss',
       },
       {
         style: 'KINESTHETIC',
         value: 'kinesthetic',
-        text: 'Space to move around and work through problems actively',
+        text: 'Space to move and solve problems actively',
       },
     ],
   },
   {
     id: 8,
-    question: 'When learning geometry, I prefer to:',
+    question: 'When learning geometry, I prefer:',
     options: [
       {
         style: 'VISUAL',
         value: 'visual',
-        text: 'See shapes and angles in diagrams and images',
+        text: 'Seeing shapes and angles in diagrams and pictures',
       },
       {
         style: 'AUDITORY',
         value: 'auditory',
-        text: 'Hear descriptions of shapes and their properties',
+        text: 'Hearing descriptions of shapes and their properties',
       },
       {
         style: 'KINESTHETIC',
         value: 'kinesthetic',
-        text: 'Draw and manipulate shapes myself',
+        text: 'Drawing and manipulating shapes myself',
       },
     ],
   },
@@ -225,54 +225,54 @@ export const learningStyleQuestionnaire: Question[] = [
       {
         style: 'AUDITORY',
         value: 'auditory',
-        text: 'Say the steps to myself in order',
+        text: 'Say the steps in order',
       },
       {
         style: 'KINESTHETIC',
         value: 'kinesthetic',
-        text: 'Go through the motions of solving it',
+        text: 'Practice the solution steps',
       },
     ],
   },
   {
     id: 10,
-    question: 'If I had to teach someone a math concept, I would:',
+    question: 'If I had to teach a math concept to someone else, I would:',
     options: [
       {
         style: 'VISUAL',
         value: 'visual',
-        text: 'Show them pictures, graphs, or demonstrations',
+        text: 'Show pictures, graphs, or demonstrations',
       },
       {
         style: 'AUDITORY',
         value: 'auditory',
-        text: 'Explain it step-by-step verbally',
+        text: 'Explain step-by-step verbally',
       },
       {
         style: 'KINESTHETIC',
         value: 'kinesthetic',
-        text: 'Work through examples together hands-on',
+        text: 'Work through an example together hands-on',
       },
     ],
   },
   {
     id: 11,
-    question: 'When I see a word problem, I first:',
+    question: 'When looking at a word problem, I first:',
     options: [
       {
         style: 'VISUAL',
         value: 'visual',
-        text: 'Draw a picture or diagram of the situation',
+        text: 'Draw the situation as a picture or diagram',
       },
       {
         style: 'AUDITORY',
         value: 'auditory',
-        text: 'Read it aloud or rephrase it in my own words',
+        text: 'Read it aloud or repeat it in my own words',
       },
       {
         style: 'KINESTHETIC',
         value: 'kinesthetic',
-        text: 'Start working with numbers and trying solutions',
+        text: 'Start manipulating numbers and trying solutions',
       },
     ],
   },
@@ -283,7 +283,7 @@ export const learningStyleQuestionnaire: Question[] = [
       {
         style: 'VISUAL',
         value: 'visual',
-        text: 'I can see clear examples and visual patterns',
+        text: 'I see clear examples and visual patterns',
       },
       {
         style: 'AUDITORY',
@@ -293,7 +293,7 @@ export const learningStyleQuestionnaire: Question[] = [
       {
         style: 'KINESTHETIC',
         value: 'kinesthetic',
-        text: 'I\'ve practiced enough problems to feel comfortable',
+        text: 'I have practiced enough problems to feel comfortable',
       },
     ],
   },

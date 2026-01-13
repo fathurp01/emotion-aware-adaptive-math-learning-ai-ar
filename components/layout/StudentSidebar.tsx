@@ -36,9 +36,9 @@ export default function StudentSidebar({ onLogout }: StudentSidebarProps) {
 
   const links = [
     { href: '/student/dashboard', icon: Home, label: 'Dashboard' },
-    { href: '/student/learn', icon: BookOpen, label: 'Belajar' },
+    { href: '/student/learn', icon: BookOpen, label: 'Learn' },
     { href: '/student/quiz', icon: MessageSquare, label: 'Quiz' },
-    { href: '/student/profile', icon: User, label: 'Profil' },
+    { href: '/student/profile', icon: User, label: 'Profile' },
   ];
 
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + '/');
@@ -56,7 +56,7 @@ export default function StudentSidebar({ onLogout }: StudentSidebarProps) {
         <div className="p-4 m-4 bg-blue-50 rounded-lg border border-blue-200">
           <div className="flex items-center gap-2 mb-1">
             <Heart className="w-4 h-4 text-blue-600" />
-            <span className="text-sm font-medium text-gray-900">Emosi Saat Ini</span>
+            <span className="text-sm font-medium text-gray-900">Current Emotion</span>
           </div>
           <p className="text-lg font-bold text-blue-600 capitalize">
             {currentEmotion.label}

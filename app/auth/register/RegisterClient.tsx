@@ -34,13 +34,13 @@ export default function RegisterClient() {
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
-      setError('Password tidak cocok');
+      setError('Passwords do not match');
       setIsLoading(false);
       return;
     }
 
     if (formData.password.length < 6) {
-      setError('Password minimal 6 karakter');
+      setError('Password must be at least 6 characters');
       setIsLoading(false);
       return;
     }
@@ -81,12 +81,12 @@ export default function RegisterClient() {
             <Brain className="w-10 h-10 text-blue-600" />
             <span className="text-3xl font-bold text-gray-900">EmotionLearn</span>
           </Link>
-          <p className="text-gray-600">Buat akun baru Anda</p>
+          <p className="text-gray-600">Create your new account</p>
         </div>
 
         {/* Register Card */}
         <div className="bg-white rounded-2xl shadow-lg p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Daftar</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Register</h2>
 
           {/* Error Alert */}
           {error && (
@@ -99,7 +99,7 @@ export default function RegisterClient() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Role Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Daftar sebagai</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Register as</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -110,8 +110,8 @@ export default function RegisterClient() {
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
-                  <div className="font-medium">Murid</div>
-                  <div className="text-xs text-gray-500 mt-1">Saya ingin belajar</div>
+                  <div className="font-medium">Student</div>
+                  <div className="text-xs text-gray-500 mt-1">I want to learn</div>
                 </button>
                 <button
                   type="button"
@@ -122,8 +122,8 @@ export default function RegisterClient() {
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
-                  <div className="font-medium">Guru</div>
-                  <div className="text-xs text-gray-500 mt-1">Saya ingin mengajar</div>
+                  <div className="font-medium">Teacher</div>
+                  <div className="text-xs text-gray-500 mt-1">I want to teach</div>
                 </button>
               </div>
             </div>
@@ -131,7 +131,7 @@ export default function RegisterClient() {
             {/* Name */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                Nama Lengkap
+                Full Name
               </label>
               <input
                 type="text"
@@ -179,7 +179,7 @@ export default function RegisterClient() {
             {/* Confirm Password */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Konfirmasi Password
+                Confirm Password
               </label>
               <input
                 type="password"
@@ -201,12 +201,12 @@ export default function RegisterClient() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Mendaftar...
+                  Registering...
                 </>
               ) : (
                 <>
                   <UserPlus className="w-5 h-5" />
-                  Daftar
+                  Register
                 </>
               )}
             </button>
@@ -214,9 +214,9 @@ export default function RegisterClient() {
 
           {/* Login Link */}
           <div className="mt-6 text-center text-sm text-gray-600">
-            Sudah punya akun?{' '}
+            Already have an account?{' '}
             <Link href="/auth/login" className="text-blue-600 hover:text-blue-700 font-medium">
-              Login di sini
+              Login here
             </Link>
           </div>
         </div>

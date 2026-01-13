@@ -35,10 +35,10 @@ export default function TeacherSidebar({ onLogout }: TeacherSidebarProps) {
 
   const links = [
     { href: '/teacher/dashboard', icon: Home, label: 'Dashboard' },
-    { href: '/teacher/students', icon: Users, label: 'Siswa' },
-    { href: '/teacher/materials', icon: BookOpen, label: 'Materi' },
-    { href: '/teacher/chapters', icon: Layers, label: 'Chapter' },
-    { href: '/teacher/analytics', icon: BarChart3, label: 'Analitik' },
+    { href: '/teacher/students', icon: Users, label: 'Students' },
+    { href: '/teacher/materials', icon: BookOpen, label: 'Materials' },
+    { href: '/teacher/chapters', icon: Layers, label: 'Chapters' },
+    { href: '/teacher/analytics', icon: BarChart3, label: 'Analytics' },
   ];
 
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + '/');
@@ -58,7 +58,7 @@ export default function TeacherSidebar({ onLogout }: TeacherSidebarProps) {
           className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="w-5 h-5" />
-          <span className="font-medium">Buat Materi</span>
+          <span className="font-medium">Create Material</span>
         </Link>
       </div>
 

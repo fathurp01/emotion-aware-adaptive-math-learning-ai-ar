@@ -30,9 +30,9 @@ type MaterialDetail = MaterialListItem & {
 };
 
 function difficultyLabel(d: Difficulty): { text: string; className: string } {
-  if (d === 'EASY') return { text: 'Mudah', className: 'bg-green-100 text-green-700' };
-  if (d === 'HARD') return { text: 'Sulit', className: 'bg-red-100 text-red-700' };
-  return { text: 'Sedang', className: 'bg-yellow-100 text-yellow-700' };
+  if (d === 'EASY') return { text: 'Easy', className: 'bg-green-100 text-green-700' };
+  if (d === 'HARD') return { text: 'Hard', className: 'bg-red-100 text-red-700' };
+  return { text: 'Medium', className: 'bg-yellow-100 text-yellow-700' };
 }
 
 export default function TeacherMaterialsPage() {
@@ -67,10 +67,10 @@ export default function TeacherMaterialsPage() {
       try {
         const res = await fetch('/api/teacher/material');
         const json = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(json?.error || 'Gagal memuat materi');
+        if (!res.ok) throw new Error(json?.error || 'Failed to load materials');
         setItems(Array.isArray(json) ? (json as MaterialListItem[]) : []);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Gagal memuat materi');
+        setError(e instanceof Error ? e.message : 'Failed to load materials');
       } finally {
         setLoading(false);
       }
@@ -87,7 +87,7 @@ export default function TeacherMaterialsPage() {
       try {
         const res = await fetch(`/api/teacher/material?id=${encodeURIComponent(previewId)}`);
         const json = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(json?.error || 'Gagal memuat detail materi');
+        if (!res.ok) throw new Error(json?.error || 'Failed to load material details');
         setPreview(json as MaterialDetail);
       } catch {
         setPreview(null);
@@ -109,22 +109,22 @@ export default function TeacherMaterialsPage() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Daftar Materi</h1>
-              <p className="text-gray-600">Kelola materi untuk siswa</p>
+              <h1 className="text-2xl font-bold text-gray-900">Materials List</h1>
+              <p className="text-gray-600">Manage materials for students</p>
             </div>
             <div className="flex items-center gap-3">
               <Link
                 href="/teacher/dashboard"
                 className="text-sm text-gray-600 hover:text-gray-900"
               >
-                Kembali
+                Back
               </Link>
               <Link
                 href="/teacher/materials/create"
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Plus className="w-4 h-4" />
-                Buat Materi
+                Create Material
               </Link>
             </div>
           </div>
@@ -136,14 +136,14 @@ export default function TeacherMaterialsPage() {
           <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center gap-3 mb-2">
               <BookOpen className="w-8 h-8 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">Total Materi</h3>
+              <h3 className="font-semibold text-gray-900">Total Materials</h3>
             </div>
             <p className="text-3xl font-bold text-blue-600">{stats.total}</p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center gap-3 mb-2">
               <BookOpen className="w-8 h-8 text-green-600" />
-              <h3 className="font-semibold text-gray-900">Sudah Refine</h3>
+              <h3 className="font-semibold text-gray-900">Refined</h3>
             </div>
             <p className="text-3xl font-bold text-green-600">{stats.refined}</p>
           </div>
@@ -151,27 +151,27 @@ export default function TeacherMaterialsPage() {
 
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           <div className="p-6 border-b">
-            <h2 className="text-xl font-bold text-gray-900">Materi</h2>
-            <p className="text-gray-600 text-sm">Klik “Preview” untuk melihat isi materi.</p>
+            <h2 className="text-xl font-bold text-gray-900">Materials</h2>
+            <p className="text-gray-600 text-sm">Click &quot;Preview&quot; to view material content.</p>
           </div>
 
           {loading ? (
             <div className="p-10 flex items-center justify-center gap-3 text-gray-600">
               <Loader2 className="w-5 h-5 animate-spin" />
-              Memuat...
+              Loading...
             </div>
           ) : error ? (
             <div className="p-10 text-center text-red-700">{error}</div>
           ) : items.length === 0 ? (
             <div className="p-12 text-center">
               <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600">Belum ada materi</p>
+              <p className="text-gray-600">No materials yet</p>
               <Link
                 href="/teacher/materials/create"
                 className="inline-flex mt-4 items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
               >
                 <Plus className="w-4 h-4" />
-                Buat Materi Pertama
+                Create First Material
               </Link>
             </div>
           ) : (
@@ -179,11 +179,11 @@ export default function TeacherMaterialsPage() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Judul</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chapter</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kesulitan</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -229,11 +229,11 @@ export default function TeacherMaterialsPage() {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="w-full max-w-3xl bg-white rounded-lg border shadow-lg overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b">
-              <div className="font-semibold text-gray-900">Preview Materi</div>
+              <div className="font-semibold text-gray-900">Material Preview</div>
               <button
                 onClick={() => setPreviewId(null)}
                 className="p-2 rounded-md hover:bg-gray-100"
-                aria-label="Tutup"
+                aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -242,7 +242,7 @@ export default function TeacherMaterialsPage() {
               {previewLoading ? (
                 <div className="flex items-center gap-3 text-gray-600">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Memuat detail...
+                  Loading details...
                 </div>
               ) : preview ? (
                 <div className="space-y-3">
@@ -255,7 +255,7 @@ export default function TeacherMaterialsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-gray-600">Gagal memuat preview.</div>
+                <div className="text-sm text-gray-600">Failed to load preview.</div>
               )}
             </div>
           </div>

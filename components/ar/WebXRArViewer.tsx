@@ -164,6 +164,250 @@ function createGraphGroup(overlay: any): THREE.Group {
   return group;
 }
 
+
+
+function createBalanceScaleGroup(overlay: any): THREE.Group {
+  const group = new THREE.Group();
+
+  // Base
+  const baseGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.1, 32);
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.7 });
+  const base = new THREE.Mesh(baseGeo, baseMat);
+  base.position.y = 0.05;
+  group.add(base);
+
+  // Default pillar
+  const pillarGeo = new THREE.CylinderGeometry(0.1, 0.1, 2, 16);
+  const pillarMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5 });
+  const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+  pillar.position.y = 1.0;
+  group.add(pillar);
+
+  // Beam (horizontal)
+  const beamGeo = new THREE.BoxGeometry(3, 0.1, 0.2);
+  const beamMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.4 });
+  const beam = new THREE.Mesh(beamGeo, beamMat);
+  beam.position.y = 2.0;
+  group.add(beam);
+
+  // Pans
+  const panGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.05, 32);
+  const panMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.3 });
+  
+  // Left Pan
+  const leftPan = new THREE.Mesh(panGeo, panMat);
+  leftPan.position.set(-1.4, 0.5, 0);
+  group.add(leftPan);
+  
+  // Weights on Left (heuristic from string length if not numeric)
+  const leftStr = String(overlay?.left || '');
+  const leftCount = Math.min(5, leftStr.length > 0 ? (parseInt(leftStr) || Math.ceil(leftStr.length / 2)) : 1);
+  for (let i = 0; i < leftCount; i++) {
+    const w = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0xff4444 }));
+    w.position.set(-1.6 + (i * 0.15), 0.6 + (i * 0.2), (i % 2) * 0.1);
+    group.add(w);
+  }
+
+  // Left Rope
+  const leftRopeGeo = new THREE.CylinderGeometry(0.01, 0.01, 1.5);
+  const ropeMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+  const leftRope = new THREE.Mesh(leftRopeGeo, ropeMat);
+  leftRope.position.set(-1.4, 1.25, 0);
+  group.add(leftRope);
+
+  // Right Pan
+  const rightPan = new THREE.Mesh(panGeo, panMat);
+  rightPan.position.set(1.4, 0.5, 0);
+  group.add(rightPan);
+
+  // Weights on Right
+  const rightStr = String(overlay?.right || '');
+  const rightCount = Math.min(5, rightStr.length > 0 ? (parseInt(rightStr) || Math.ceil(rightStr.length / 2)) : 1);
+  for (let i = 0; i < rightCount; i++) {
+    const w = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0x4488ff }));
+    w.position.set(1.2 + (i * 0.15), 0.6 + (i * 0.2), (i % 2) * 0.1);
+    group.add(w);
+  }
+
+  // Right Rope
+  const rightRope = new THREE.Mesh(leftRopeGeo, ropeMat);
+  rightRope.position.set(1.4, 1.25, 0);
+  group.add(rightRope);
+
+  // Scale down for AR
+  group.scale.setScalar(0.08); 
+  return group;
+}
+
+function createNumberLineGroup(overlay: any): THREE.Group {
+  const group = new THREE.Group();
+  
+  // Data extraction
+  const rawStart = overlay?.start;
+  const startVal = typeof rawStart === 'number' ? rawStart : 0;
+  const jumps = Array.isArray(overlay?.jumps) ? overlay.jumps : [];
+  const minVal = typeof overlay?.min === 'number' ? overlay.min : startVal - 5;
+  const maxVal = typeof overlay?.max === 'number' ? overlay.max : startVal + 5;
+  const range = maxVal - minVal || 10;
+  const stepSize = 4 / Math.max(1, range); // map logic range to physical width (~4 meters scaled)
+
+  // Main line
+  const lineGeo = new THREE.CylinderGeometry(0.02, 0.02, 4.2, 12);
+  const lineMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+  const line = new THREE.Mesh(lineGeo, lineMat);
+  line.rotation.z = Math.PI / 2;
+  line.position.y = 0.2;
+  group.add(line);
+
+  // Ticks
+  const tickGeo = new THREE.BoxGeometry(0.02, 0.1, 0.02);
+  const tickMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+  
+  // Create logical ticks 
+  const startTick = Math.ceil(minVal);
+  const endTick = Math.floor(maxVal);
+
+  for (let i = startTick; i <= endTick; i++) {
+    const offset = (i - ((minVal + maxVal) / 2)) * stepSize;
+    const tick = new THREE.Mesh(tickGeo, tickMat);
+    tick.position.set(offset, 0.2, 0);
+    group.add(tick);
+    
+    // Highlight origin or start/jumps targets
+    if (i === 0 || i === startVal) {
+      const marker = new THREE.Mesh(
+        new THREE.SphereGeometry(0.05),
+        new THREE.MeshStandardMaterial({ color: i === 0 ? 0xffee00 : 0x00aaff })
+      );
+      marker.position.set(offset, 0.35, 0);
+      group.add(marker);
+    }
+  }
+
+  // Jumper arc for jumps
+  let currentPos = startVal;
+  jumps.forEach((impulse: number, idx: number) => {
+    if (typeof impulse !== 'number') return;
+    const nextPos = currentPos + impulse;
+    
+    // Physical X coords
+    const x1 = (currentPos - ((minVal + maxVal) / 2)) * stepSize;
+    const x2 = (nextPos - ((minVal + maxVal) / 2)) * stepSize;
+    const dist = Math.abs(x2 - x1);
+    const midX = (x1 + x2) / 2;
+    const height = Math.min(1, dist * 0.5);
+
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(x1, 0.2, 0),
+      new THREE.Vector3(midX, 0.2 + height + 0.2, 0),
+      new THREE.Vector3(x2, 0.2, 0)
+    );
+    const points = curve.getPoints(20);
+    const arcGeo = new THREE.BufferGeometry().setFromPoints(points);
+    const arcMat = new THREE.LineBasicMaterial({ color: idx === 0 ? 0xff4444 : 0x44ff44, linewidth: 2 });
+    const arc = new THREE.Line(arcGeo, arcMat);
+    group.add(arc);
+    
+    currentPos = nextPos;
+  });
+
+  group.scale.setScalar(0.1);
+  return group;
+}
+
+function createAlgebraTilesGroup(overlay: any): THREE.Group {
+  const group = new THREE.Group();
+  
+  const tilesData = overlay?.tiles || {};
+  const countX2 = Math.max(0, Math.min(5, tilesData.x2 ?? 1));
+  const countX = Math.max(0, Math.min(5, tilesData.x ?? 2));
+  const count1 = Math.max(0, Math.min(8, tilesData.constant ?? 3));
+
+  let xOffset = -1.0;
+
+  // x^2 tiles (Blue Square)
+  const x2Geo = new THREE.BoxGeometry(1, 0.1, 1);
+  const x2Mat = new THREE.MeshStandardMaterial({ color: 0x3b82f6 }); // Blue
+  for(let i=0; i<countX2; i++) {
+    const t = new THREE.Mesh(x2Geo, x2Mat);
+    t.position.set(xOffset, 0.05, 0);
+    group.add(t);
+    xOffset += 1.1;
+  }
+
+  // x tiles (Green Rectangle)
+  const xGeo = new THREE.BoxGeometry(1, 0.1, 0.4);
+  const xMat = new THREE.MeshStandardMaterial({ color: 0x22c55e }); // Green
+  for(let i=0; i<countX; i++) {
+    const t = new THREE.Mesh(xGeo, xMat);
+    t.position.set(xOffset, 0.05, 0);
+    group.add(t);
+    xOffset += 1.1;
+  }
+
+  // 1 tiles (Yellow Small Square)
+  // Stack them in grid/column if many
+  const oneGeo = new THREE.BoxGeometry(0.4, 0.1, 0.4);
+  const oneMat = new THREE.MeshStandardMaterial({ color: 0xeab308 }); // Yellow
+  for(let i=0; i<count1; i++) {
+    const t = new THREE.Mesh(oneGeo, oneMat);
+    t.position.set(xOffset + (i%2)*0.5, 0.05, Math.floor(i/2)*0.5);
+    group.add(t);
+  }
+
+  group.scale.setScalar(0.12);
+  return group;
+}
+
+function createFractionBlocksGroup(overlay: any): THREE.Group {
+  const group = new THREE.Group();
+
+  // Frame
+  const frameGeo = new THREE.BoxGeometry(3.5, 0.1, 2);
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+  const frame = new THREE.Mesh(frameGeo, frameMat);
+  frame.position.y = 0.05;
+  group.add(frame);
+
+  // 1 Whole block reference
+  const wholeGeo = new THREE.BoxGeometry(3, 0.15, 0.5);
+  const wholeMat = new THREE.MeshStandardMaterial({ color: 0xff4444 }); // Red
+  const whole = new THREE.Mesh(wholeGeo, wholeMat);
+  whole.position.set(0, 0.15, -0.6);
+  group.add(whole);
+
+  // Parse fractions from overlay
+  // e.g. ["1/2", "3/4"]
+  const fracs = (Array.isArray(overlay?.fractions) ? overlay.fractions : ['1/2']) as string[];
+  
+  fracs.slice(0, 2).forEach((fStr, idx) => {
+    const [num, den] = fStr.split('/').map(Number);
+    if (!den) return;
+    
+    // Total width 3.0 represents "1"
+    const widthPerUnit = 3.0 / den;
+    const zPos = 0.2 + (idx * 0.7);
+    
+    // Draw denominators (outline or background)
+    // Actually just draw 'num' blocks colored, and maybe 'den-num' items ghosted?
+    // Let's just draw 'num' blocks for now.
+    
+    const blockGeo = new THREE.BoxGeometry(widthPerUnit * 0.9, 0.15, 0.5);
+    const blockMat = new THREE.MeshStandardMaterial({ color: 0x4488ff }); // Blue
+    
+    let currentX = -1.5 + (widthPerUnit / 2); // Start left
+    for(let k=0; k<num; k++) {
+      const b = new THREE.Mesh(blockGeo, blockMat);
+      b.position.set(currentX, 0.15, zPos);
+      group.add(b);
+      currentX += widthPerUnit;
+    }
+  });
+
+  group.scale.setScalar(0.08);
+  return group;
+}
+
 function createFallbackObject(): THREE.Group {
   const group = new THREE.Group();
 
@@ -193,9 +437,23 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
   const [diagnostic, setDiagnostic] = useState<string>('');
 
   const objectFactory = useMemo(() => {
+    const template = recipe?.template;
     const overlay = recipe?.overlay;
-    if (recipe?.template === 'graph_2d' && isGraph2dLinearSystemOverlay(overlay)) {
+
+    if (template === 'graph_2d' && isGraph2dLinearSystemOverlay(overlay)) {
       return () => createGraphGroup(overlay);
+    }
+    if (template === 'balance_scale') {
+      return () => createBalanceScaleGroup(overlay);
+    }
+    if (template === 'number_line') {
+      return () => createNumberLineGroup(overlay);
+    }
+    if (template === 'fraction_blocks') {
+      return () => createFractionBlocksGroup(overlay);
+    }
+    if (template === 'algebra_tiles') {
+      return () => createAlgebraTilesGroup(overlay);
     }
 
     return () => createFallbackObject();
@@ -228,7 +486,7 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
         if (typeof window !== 'undefined' && window.isSecureContext === false) {
           setSupported(false);
           setStatus(
-            'WebXR AR butuh origin HTTPS/localhost. Kamu sedang akses via HTTP (IP LAN). Opsi cepat: (1) pakai USB + `adb reverse tcp:3000 tcp:3000` lalu buka `http://localhost:3000` di HP, atau (2) pakai HTTPS tunnel (Cloudflare/ngrok) / sertifikat lokal.'
+            'WebXR AR requires HTTPS origin or localhost. You are accessing via HTTP (LAN IP). Quick fix: (1) use USB + `adb reverse tcp:3000 tcp:3000` then open `http://localhost:3000` on phone, or (2) use HTTPS tunnel (Cloudflare/ngrok) / local certificate.',
           );
           return;
         }
@@ -236,14 +494,14 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
         const xr = (navigator as any).xr as XRSystem | undefined;
         if (!xr) {
           setSupported(false);
-          setStatus('WebXR tidak tersedia di browser ini.');
+          setStatus('WebXR is not available in this browser.');
           return;
         }
 
         const ok = await xr.isSessionSupported('immersive-ar');
         setSupported(ok);
         if (!ok) {
-          setStatus('Device/browser ini belum mendukung WebXR AR (immersive-ar).');
+          setStatus('This device/browser does not support WebXR AR (immersive-ar).');
           return;
         }
 
@@ -320,7 +578,7 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
 
         mountArButton();
 
-        setStatus('Klik tombol “Start AR”, arahkan kamera ke permukaan datar, tunggu reticle muncul, lalu tap untuk menaruh objek.');
+        setStatus('Click "Start AR", point camera at a flat surface, wait for reticle, then tap to place object.');
 
         const onSelect = () => {
           if (!scene || !reticle) return;
@@ -348,9 +606,9 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
               cam.getWorldPosition(pos);
               obj.position.copy(pos).add(dir.multiplyScalar(1.0));
               obj.quaternion.copy(cam.quaternion);
-              setStatus('Reticle belum muncul; objek ditaruh di depan kamera. Gerakkan kamera ke permukaan datar agar reticle muncul untuk penempatan yang presisi.');
+              setStatus('Reticle not appearing; object placed in front of camera. Move camera to a flat surface to show reticle for precise placement.');
             } else {
-              setStatus('Belum menemukan permukaan datar. Gerakkan kamera pelan-pelan sampai reticle (lingkaran) muncul, lalu tap.');
+              setStatus('Flat surface not found. Move camera slowly until reticle (circle) appears, then tap.');
             }
           }
 
@@ -365,7 +623,7 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
           session.addEventListener('select', onSelect);
           hitTestSourceRequested = false;
           hitTestSource = null;
-          setStatus('AR aktif. Arahkan kamera ke permukaan datar, tunggu reticle muncul, lalu tap untuk menaruh objek.');
+          setStatus('AR active. Point camera at a flat surface, wait for reticle, then tap to place object.');
         });
 
         renderer.xr.addEventListener('sessionend', () => {
@@ -391,7 +649,7 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
             placedObject = null;
           }
 
-          setStatus('AR berhenti. Kamu bisa klik Start AR lagi.');
+          setStatus('AR stopped. You can click Start AR again.');
 
           // Recreate ARButton to avoid "must refresh page" on some devices.
           try {
@@ -434,7 +692,7 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
                   const now = Date.now();
                   if (now - lastTrackingMessageAt > 1500) {
                     lastTrackingMessageAt = now;
-                    setStatus('Tracking AR sedang hilang. Coba tambah cahaya, gerakkan kamera pelan, dan arahkan ke permukaan bertekstur.');
+                    setStatus('AR tracking lost. Try adding light, move camera slowly, and point at textured surfaces.');
                   }
                 }
               } catch {
@@ -506,7 +764,7 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
         };
       } catch (e) {
         setSupported(false);
-        setStatus(e instanceof Error ? e.message : 'Gagal inisialisasi WebXR AR');
+        setStatus(e instanceof Error ? e.message : 'Failed to initialize WebXR AR');
       }
     };
 
@@ -548,8 +806,8 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
       {supported === false ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center p-5">
           <div className="max-w-[520px] rounded-lg border border-white/15 bg-black/70 p-4 text-white">
-            <div className="text-sm font-semibold">WebXR belum siap</div>
-            <div className="mt-1 text-xs text-white/85">{status || 'Tidak bisa memulai WebXR AR.'}</div>
+            <div className="text-sm font-semibold">WebXR not ready</div>
+            <div className="mt-1 text-xs text-white/85">{status || 'Cannot start WebXR AR.'}</div>
             {diagnostic ? <div className="mt-2 text-[10px] text-white/60">{diagnostic}</div> : null}
           </div>
         </div>
@@ -565,7 +823,7 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
       <div className="absolute inset-x-0 bottom-0 z-10 p-3 bg-black/60 text-white">
         <div className="text-xs text-white/90">
           {supported === false
-            ? 'WebXR AR biasanya jalan di Android Chrome (HTTPS/localhost). Di Windows webcam, yang tersedia hanya overlay 2D.'
+            ? 'WebXR AR usually runs on Android Chrome (HTTPS/localhost). On Windows webcam, only 2D overlay is available.'
             : status}
         </div>
         {diagnostic ? <div className="mt-1 text-[10px] text-white/60">{diagnostic}</div> : null}

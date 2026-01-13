@@ -307,15 +307,15 @@ export function getEncouragementMessage(
   score?: number
 ): string {
   if (emotion === 'Negative') {
-    return "🫂 Tarik napas dulu. Kamu hebat—pelan-pelan aja, ya.";
+    return "🫂 Take a deep breath. You are doing great—just take it slow.";
   }
   if (emotion === 'Positive' && score && score > 70) {
-    return '🎉 Keren! Kamu sudah paham. Yuk coba tantangan sedikit lebih sulit!';
+    return '🎉 Awesome! You understand it. Let\'s try a slightly harder challenge!';
   }
   if (emotion === 'Positive') {
-    return '😊 Semangat bagus! Lanjutkan ya.';
+    return '😊 Great spirit! Keep it up.';
   }
-  return '👍 Kamu di jalur yang benar. Teruskan!';
+  return '👍 You\'re on the right track. Keep going!';
 }
 
 /**

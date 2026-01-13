@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useAuthChecked, useCurrentEmotion, useHasHydrated, useUser } from '@/lib/store';
+import { useAuthChecked, useCurrentEmotion, useHasHydrated, useUser, useLogout } from '@/lib/store';
 import { Send, Loader2, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -41,6 +41,7 @@ export default function QuizPage() {
   const hasHydrated = useHasHydrated();
   const authChecked = useAuthChecked();
   const currentEmotion = useCurrentEmotion();
+  const logout = useLogout();
   const materialId = params.materialId as string;
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -81,12 +82,21 @@ export default function QuizPage() {
     if (!hasHydrated) return;
     if (!authChecked) return;
     if (!user) {
-      router.push('/auth/login');
+      // Avoid using router.push here to prevent race conditions during hydration
+      // The useEffect below handles the redirect if user is largely missing
       return;
     }
-
     fetchMaterial();
-  }, [hasHydrated, authChecked, user, router, fetchMaterial]);
+  }, [hasHydrated, authChecked, user, fetchMaterial]);
+
+  useEffect(() => {
+    if (hasHydrated && !user) {
+       router.replace('/auth/login');
+    }
+  }, [hasHydrated, user, router]);
+
+  if (!hasHydrated) return null; // Prevent hydration mismatch
+  if (!user) return null; // Prevent rendering if no user (will redirect)
 
   useEffect(() => {
     async function fetchLastEmotion() {
@@ -169,7 +179,23 @@ export default function QuizPage() {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to generate quiz');
+      if (!res.ok) {
+        if (res.status === 404) {
+          const errData = await res.json();
+          if (errData.error === 'User not found') {
+            toast.error('Invalid session. Please login again.');
+            logout();
+            window.location.href = '/auth/login';
+            return;
+          }
+          if (errData.error === 'Material not found') {
+            toast.error('Material not found.');
+            window.location.href = '/student/dashboard';
+            return;
+          }
+        }
+        throw new Error('Failed to generate quiz');
+      }
 
       const payload = await res.json();
       const question: QuizQuestion = payload?.data;
@@ -196,7 +222,8 @@ export default function QuizPage() {
       setMessages([botMessage]);
     } catch (error) {
       console.error('Error starting quiz:', error);
-      toast.error('Gagal memulai quiz');
+      // specific toast handled above for 404
+      if (!messages.length) toast.error('Failed to start quiz');
     } finally {
       setIsLoading(false);
     }
@@ -383,7 +410,7 @@ export default function QuizPage() {
       }, 2000);
     } catch (error) {
       console.error('Error submitting answer:', error);
-      toast.error('Gagal mengirim jawaban');
+      toast.error('Failed to send answer');
       setIsLoading(false);
     }
   };
@@ -408,7 +435,7 @@ export default function QuizPage() {
                 <ArrowLeft className="w-5 h-5" />
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Quiz Interaktif</h1>
+                <h1 className="text-xl font-bold text-gray-900">Interactive Quiz</h1>
                 {material && (
                   <p className="text-sm text-gray-600">{material.title}</p>
                 )}
@@ -425,11 +452,11 @@ export default function QuizPage() {
               <Send className="w-10 h-10 text-blue-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Siap untuk memulai quiz?
+              Ready to start the quiz?
             </h2>
             <p className="text-gray-600 mb-8 max-w-md mx-auto">
-              Kamu akan mendapatkan pertanyaan yang disesuaikan dengan gaya belajarmu.
-              Jawab dengan teliti dan dapatkan feedback langsung dari AI!
+              You will get questions adapted to your learning style.
+              Answer carefully and get AI feedback!
             </p>
             <button
               onClick={startQuiz}
@@ -439,10 +466,10 @@ export default function QuizPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Memuat...
+                  Loading...
                 </>
               ) : (
-                'Mulai Quiz'
+                'Start Quiz'
               )}
             </button>
           </div>
@@ -451,47 +478,46 @@ export default function QuizPage() {
             {/* Progress */}
             <div className="mb-4 flex items-center justify-between text-sm text-gray-600">
               <div>
-                Soal {Math.min(answeredCount + 1, MAX_QUESTIONS)}/{MAX_QUESTIONS} (maks)
+                Question {Math.min(answeredCount + 1, MAX_QUESTIONS)}/{MAX_QUESTIONS} (max)
               </div>
               <div>
-                Skor sementara: {answeredCount > 0 ? Math.round(totalScore / answeredCount) : 0}
+                Current score: {answeredCount > 0 ? Math.round(totalScore / answeredCount) : 0}
               </div>
             </div>
-
             <div className="mb-4 flex items-center justify-between text-xs text-gray-500">
               <div>
                 Mastery streak: <span className="font-semibold text-gray-700">{Math.min(correctStreak, MASTERY_STREAK)}/{MASTERY_STREAK}</span>
               </div>
               <div>
-                Emosi (fallback): <span className="font-semibold text-gray-700">{(currentEmotion?.label ?? lastEmotionFromDb ?? (wrongCount >= 2 ? 'Negative' : 'Neutral'))}</span>
+                Emotion (fallback): <span className="font-semibold text-gray-700">{(currentEmotion?.label ?? lastEmotionFromDb ?? (wrongCount >= 2 ? 'Negative' : 'Neutral'))}</span>
               </div>
             </div>
 
             {/* Emotion guidance */}
             {(currentEmotion?.label ?? lastEmotionFromDb ?? (wrongCount >= 2 ? 'Negative' : 'Neutral')) === 'Negative' && (
               <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-blue-900">
-                <div className="font-semibold">Tenang dulu ya</div>
+                <div className="font-semibold">Calm down a bit</div>
                 <div className="text-sm text-blue-800">
-                  Kamu terlihat sedikit tertekan. Tarik napas pelan 3 kali, lalu kerjakan pelan-pelan.
-                  Kalau perlu, baca kembali materi sebentar.
+                  You seem a bit stressed. Take 3 deep breaths, then proceed slowly.
+                  Review material if needed.
                 </div>
               </div>
             )}
 
             {(currentEmotion?.label ?? lastEmotionFromDb ?? (wrongCount >= 2 ? 'Negative' : 'Neutral')) === 'Neutral' && (
               <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900">
-                <div className="font-semibold">Kamu sudah cukup tenang</div>
+                <div className="font-semibold">You are calm enough</div>
                 <div className="text-sm text-gray-700">
-                  Lanjutkan dengan ritme normal ya. Fokus ke langkah-langkahnya, dan kalau mentok gunakan hint.
+                  Continue with normal rhythm. Focus on steps, use hints if stuck.
                 </div>
               </div>
             )}
 
             {(currentEmotion?.label ?? lastEmotionFromDb ?? (wrongCount >= 2 ? 'Negative' : 'Neutral')) === 'Positive' && (
               <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-900">
-                <div className="font-semibold">Mantap!</div>
+                <div className="font-semibold">Great!</div>
                 <div className="text-sm text-green-800">
-                  Sepertinya kamu dengan gampang memahami materi{material?.title ? `: ${material.title}` : ''}. Coba selesaikan soal berikut.
+                  Seems you understand the material easily{material?.title ? `: ${material.title}` : ''}. Try next question.
                 </div>
               </div>
             )}
@@ -575,7 +601,7 @@ export default function QuizPage() {
                     value={userAnswer}
                     onChange={(e) => setUserAnswer(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Ketik jawabanmu di sini..."
+                    placeholder="Type your answer here..."
                     disabled={isLoading}
                     className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
@@ -594,32 +620,32 @@ export default function QuizPage() {
               </div>
             ) : (
               <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-bold text-gray-900">Quiz Selesai</h3>
+                <h3 className="text-lg font-bold text-gray-900">Quiz Finished</h3>
                 {finishReason === 'MASTERY' && (
                   <p className="mt-1 text-green-700 text-sm font-medium">
-                    Mastery tercapai: {MASTERY_STREAK} jawaban benar berturut-turut.
+                    Mastery achieved: {MASTERY_STREAK} correct answers in a row.
                   </p>
                 )}
                 {finishReason === 'MAX' && (
                   <p className="mt-1 text-gray-600 text-sm">
-                    Batas maksimal {MAX_QUESTIONS} soal tercapai.
+                    Max limit of {MAX_QUESTIONS} questions reached.
                   </p>
                 )}
                 <p className="mt-1 text-gray-700">
-                  Skor akhir: <span className="font-semibold">{answeredCount > 0 ? Math.round(totalScore / answeredCount) : 0}</span>/100
+                  Final Score: <span className="font-semibold">{answeredCount > 0 ? Math.round(totalScore / answeredCount) : 0}</span>/100
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     onClick={startQuiz}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    Ambil Ulang Quiz
+                    Retake Quiz
                   </button>
                   <Link
                     href={`/student/learn/${materialId}`}
                     className="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
                   >
-                    Kembali ke Materi (lihat remedial)
+                    Back to Material (view remedial)
                   </Link>
                 </div>
               </div>

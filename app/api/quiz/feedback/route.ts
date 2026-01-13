@@ -109,7 +109,7 @@ function gradeCalc(userAnswer: string, expectedAnswer: string): { isCorrect: boo
     return {
       isCorrect: false,
       score: 0,
-      feedback: 'Jawaban harus berupa angka.',
+      feedback: 'Answer must be a number.',
     };
   }
 
@@ -118,29 +118,28 @@ function gradeCalc(userAnswer: string, expectedAnswer: string): { isCorrect: boo
   return {
     isCorrect,
     score: isCorrect ? 100 : 0,
-    feedback: isCorrect ? 'Benar.' : `Salah. Jawaban yang diharapkan: ${expectedAnswer}`,
+    feedback: isCorrect ? 'Correct.' : `Incorrect. Expected answer: ${expectedAnswer}`,
   };
 }
 
 function pickKeywords(materialText: string, maxKeywords: number): string[] {
   const stop = new Set([
-    'dan',
-    'yang',
-    'dari',
-    'untuk',
-    'pada',
-    'dengan',
-    'atau',
-    'adalah',
-    'ini',
-    'itu',
-    'ke',
-    'di',
-    'sebagai',
-    'dalam',
-    'jadi',
-    'jika',
-    'maka',
+    'and',
+    'which',
+    'from',
+    'for',
+    'on',
+    'with',
+    'or',
+    'is',
+    'this',
+    'that',
+    'to',
+    'in',
+    'as',
+    'so',
+    'if',
+    'then',
   ]);
 
   const words = materialText
@@ -169,8 +168,8 @@ function gradeRecap(userAnswer: string, materialText: string): { isCorrect: bool
   const score = isCorrect ? 100 : hits >= 1 && longEnough ? 70 : longEnough ? 50 : 0;
 
   const feedback = isCorrect
-    ? 'Bagus, ringkasannya sudah mencakup poin penting.'
-    : 'Coba sebutkan 2–3 poin utama (definisi/rumus) dan 1 contoh singkat.';
+    ? 'Good, the summary covers the key points.'
+    : 'Try to mention 2-3 main points (definitions/formulas) and 1 short example.';
 
   return { isCorrect, score, feedback };
 }
@@ -221,10 +220,10 @@ export async function POST(request: NextRequest) {
 
     const encouragement =
       canonicalEmotion === 'Negative'
-        ? 'Tenang, kerjakan pelan-pelan ya.'
+        ? 'Relax, take it slow.'
         : canonicalEmotion === 'Positive'
-        ? 'Mantap! Lanjut ya.'
-        : 'Lanjut!';
+        ? 'Awesome! Keep going.'
+        : 'Next!';
 
     // AI-driven feedback/scoring (with local fallback for stability)
     let finalIsCorrect = localGraded.isCorrect;

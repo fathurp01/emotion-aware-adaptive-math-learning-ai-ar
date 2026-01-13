@@ -1,15 +1,15 @@
 # Quick Start Guide
 
-## Langkah Cepat (15 menit)
+## Quick Start (15 minutes)
 
-### 1. Install (2 menit)
+### 1. Install (2 minutes)
 ```bash
 npm install
 ```
 
-### 2. Setup Database (3 menit)
+### 2. Setup Database (3 minutes)
 ```bash
-# Buat database MySQL
+# Create MySQL database
 mysql -u root -p
 CREATE DATABASE emotion_learning_db;
 EXIT;
@@ -20,8 +20,8 @@ npm run db:push
 npm run db:seed
 ```
 
-### 3. Configure Environment (2 menit)
-Buat file `.env`:
+### 3. Configure Environment (2 minutes)
+Create `.env` file:
 ```env
 DATABASE_URL="mysql://root:password@localhost:3306/emotion_learning_db"
 # Provide at least ONE provider
@@ -31,23 +31,23 @@ MISTRAL_API_KEY="your_key_from_console.mistral.ai"
 NEXTAUTH_SECRET="random_string_min_32_chars"
 ```
 
-### 4. Add Model Files (5 menit)
-Download atau train model di [Teachable Machine](https://teachablemachine.withgoogle.com/)
+### 4. Add Model Files (5 minutes)
+Download or train model at [Teachable Machine](https://teachablemachine.withgoogle.com/)
 
-Copy 3 files ke `public/model/`:
+Copy 3 files to `public/model/`:
 - model.json
 - model_metadata.json
 - weights.bin
 
-### 5. Run (1 menit)
+### 5. Run (1 minute)
 ```bash
 npm run dev
 ```
 
 Open: http://localhost:3000
 
-### 6. Test (2 menit)
-Login dengan:
+### 6. Test (2 minutes)
+Login with:
 - Student: `student@demo.com` / `password123`
 - Teacher: `teacher@demo.com` / `password123`
 
@@ -56,10 +56,10 @@ Login dengan:
 ## Demo Flow
 
 ### As Student:
-1. Login → Onboarding (isi 12 pertanyaan)
-2. Dashboard → Klik material
-3. **Aktifkan kamera** → Lihat UI berubah sesuai emosi
-4. Klik "Quiz" → Chat dengan AI
+1. Login → Onboarding (answer 12 questions)
+2. Dashboard → Click material
+3. **Activate camera** → Watch UI change with emotion
+4. Click "Quiz" → Chat with AI
 5. Cek emotion stats di dashboard
 
 ### As Teacher:
@@ -70,18 +70,18 @@ Login dengan:
 
 ---
 
-## File yang Harus Ada
+## Required Files
 
-✅ Sudah dibuat:
+✅ Already created:
 - [x] 35+ application files
 - [x] Database schema
 - [x] Seed data
 
-⚠️ Harus ditambahkan:
+⚠️ Must be added:
 - [ ] `public/model/tfjs_model/model.json`
 - [ ] `public/model/tfjs_model/metadata.json`
 - [ ] `public/model/tfjs_model/group1-shard*.bin`
-- [ ] `.env` file dengan credentials
+- [ ] `.env` file with credentials
 
 ---
 

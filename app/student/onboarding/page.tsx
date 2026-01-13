@@ -14,6 +14,19 @@ import type { QuestionnaireAnswers, LearningStyle } from '@/utils/learningStyleA
 import { Brain, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+function formatLearningStyleLabel(style: LearningStyle) {
+  switch (style) {
+    case 'VISUAL':
+      return 'Visual';
+    case 'AUDITORY':
+      return 'Auditory';
+    case 'KINESTHETIC':
+      return 'Kinesthetic';
+    default:
+      return String(style);
+  }
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const user = useUser();
@@ -37,12 +50,12 @@ export default function OnboardingPage() {
 
   const handleSubmit = async () => {
     if (Object.keys(answers).length < totalQuestions) {
-      toast.error('Mohon jawab semua pertanyaan');
+      toast.error('Please answer all questions');
       return;
     }
 
     if (!user) {
-      toast.error('User not found. Please login again');
+      toast.error('User not found. Please login again.');
       return;
     }
 
@@ -68,17 +81,17 @@ export default function OnboardingPage() {
       const updatedUser = data?.data?.user;
 
       if (!learningStyle || !updatedUser) {
-        throw new Error('Unexpected response from server');
+        throw new Error('Invalid server response');
       }
 
       // Update local session so other pages (quiz, dashboard) instantly see the learning style
       setUser(updatedUser);
 
-      toast.success(`Gaya belajar Anda: ${learningStyle}`);
+      toast.success(`Your learning style: ${formatLearningStyleLabel(learningStyle)}`);
       router.push('/student/dashboard');
     } catch (error) {
       console.error('Onboarding error:', error);
-      toast.error('Gagal menyimpan hasil kuesioner');
+      toast.error('Failed to save questionnaire results');
     } finally {
       setIsSubmitting(false);
     }
@@ -93,17 +106,17 @@ export default function OnboardingPage() {
         <div className="text-center mb-8">
           <Brain className="w-12 h-12 text-blue-600 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Kuesioner Gaya Belajar
+            Learning Style Questionnaire
           </h1>
           <p className="text-gray-600">
-            Jawab 12 pertanyaan untuk mengetahui gaya belajar Anda
+            Answer 12 questions to determine your learning style
           </p>
         </div>
 
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex justify-between text-sm text-gray-600 mb-2">
-            <span>Pertanyaan {currentQuestion + 1} dari {totalQuestions}</span>
+            <span>Question {currentQuestion + 1} of {totalQuestions}</span>
             <span>{Math.round(progress)}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
@@ -118,7 +131,7 @@ export default function OnboardingPage() {
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
           <div className="mb-6">
             <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-4">
-              Pertanyaan {currentQuestion + 1}
+              Question {currentQuestion + 1}
             </span>
             <h2 className="text-xl font-semibold text-gray-900">
               {currentQ.question}
@@ -152,7 +165,7 @@ export default function OnboardingPage() {
                       <div className={`font-medium mb-1 ${
                         isSelected ? 'text-blue-900' : 'text-gray-900'
                       }`}>
-                        {option.style}
+                        {formatLearningStyleLabel(option.style)}
                       </div>
                       <div className={`text-sm ${
                         isSelected ? 'text-blue-700' : 'text-gray-600'
@@ -174,7 +187,7 @@ export default function OnboardingPage() {
             disabled={currentQuestion === 0}
             className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors"
           >
-            Sebelumnya
+            Previous
           </button>
 
           {currentQuestion === totalQuestions - 1 ? (
@@ -186,10 +199,10 @@ export default function OnboardingPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Menyimpan...
+                  Saving...
                 </>
               ) : (
-                'Selesai'
+                'Finish'
               )}
             </button>
           ) : (
@@ -198,7 +211,7 @@ export default function OnboardingPage() {
               disabled={!answers[currentQ.id]}
               className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
             >
-              Selanjutnya
+              Next
             </button>
           )}
         </div>

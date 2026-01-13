@@ -92,9 +92,9 @@ export default function StudentDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Selamat datang, {user?.name}!
+                Welcome, {user?.name}!
               </h1>
-              <p className="text-gray-600">Gaya belajar: <span className="font-medium text-blue-600">{user?.learningStyle || 'Belum ditentukan'}</span></p>
+              <p className="text-gray-600">Learning style: <span className="font-medium text-blue-600">{user?.learningStyle || 'Not set'}</span></p>
             </div>
             <button
               type="button"
@@ -121,7 +121,7 @@ export default function StudentDashboard() {
           <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center gap-3 mb-2">
               <Brain className="w-8 h-8 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">Gaya Belajar</h3>
+              <h3 className="font-semibold text-gray-900">Learning Style</h3>
             </div>
             <p className="text-2xl font-bold text-blue-600">{user?.learningStyle || 'N/A'}</p>
           </div>
@@ -129,7 +129,7 @@ export default function StudentDashboard() {
           <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center gap-3 mb-2">
               <BookOpen className="w-8 h-8 text-green-600" />
-              <h3 className="font-semibold text-gray-900">Materi Tersedia</h3>
+              <h3 className="font-semibold text-gray-900">Available Materials</h3>
             </div>
             <p className="text-2xl font-bold text-green-600">
               {chapters.reduce((acc, ch) => acc + ch.materials.length, 0)}
@@ -139,7 +139,7 @@ export default function StudentDashboard() {
           <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center gap-3 mb-2">
               <Heart className="w-8 h-8 text-red-600" />
-              <h3 className="font-semibold text-gray-900">Log Emosi</h3>
+              <h3 className="font-semibold text-gray-900">Emotion Log</h3>
             </div>
             <p className="text-2xl font-bold text-red-600">
               {Object.values(emotionStats).reduce((a, b) => a + b, 0)}
@@ -152,7 +152,7 @@ export default function StudentDashboard() {
           <div className="bg-white rounded-lg shadow-sm p-6 border mb-8">
             <div className="flex items-center gap-2 mb-4">
               <BarChart3 className="w-5 h-5 text-blue-600" />
-              <h2 className="text-xl font-bold text-gray-900">Statistik Emosi</h2>
+              <h2 className="text-xl font-bold text-gray-900">Emotion Statistics</h2>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Object.entries(emotionStats).map(([emotion, count]) => (
@@ -167,12 +167,12 @@ export default function StudentDashboard() {
 
         {/* Chapters and Materials */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Materi Pembelajaran</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Learning Materials</h2>
           
           {chapters.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm p-12 text-center border">
               <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600">Belum ada materi tersedia</p>
+              <p className="text-gray-600">No materials available</p>
             </div>
           ) : (
             <div className="space-y-6">

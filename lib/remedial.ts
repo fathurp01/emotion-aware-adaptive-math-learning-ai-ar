@@ -42,46 +42,46 @@ function buildRemedialPrompt(input: RemedialInput): string {
   const summary = input.recentSummary;
 
   return [
-    'Kamu adalah tutor matematika SMP yang adaptif dan suportif.',
-    'Tugas: buat materi remedial PERSONAL untuk 1 siswa berdasarkan materi + hasil quiz terakhir.',
-    'Tujuan: memperbaiki miskonsepsi, menambah contoh, dan memberi latihan singkat agar siswa cepat paham.',
+    'You are an adaptive and supportive middle school math tutor.',
+    'Task: create PERSONAL remedial material for 1 student based on material + last quiz results.',
+    'Goal: fix misconceptions, add examples, and give short exercises for quick understanding.',
     '',
-    'Aturan output:',
-    '- Bahasa Indonesia, ramah, ringkas tapi jelas.',
-    '- Format MARKDOWN rapi (judul, ringkasan, langkah, contoh, latihan).',
-    '- Jangan menambah konsep di luar materi (kalau butuh, beri catatan "(Perlu konfirmasi guru)").',
-    '- Sertakan: 1 ringkasan inti, 1 contoh dikerjakan langkah demi langkah, 2 latihan + kunci singkat.',
-    '- Adaptif berdasarkan emosi: jika Negative, beri dukungan + langkah kecil; jika Positive, beri tantangan ringan.',
-    '- Adaptif berdasarkan gaya belajar:',
-    '  - VISUAL: gunakan tabel/diagram ASCII sederhana bila cocok.',
-    '  - AUDITORY: gunakan gaya penjelasan seperti narasi tutor.',
-    '  - KINESTHETIC: gunakan aktivitas kecil/eksperimen angka yang bisa dicoba.',
-    '- Untuk matematika: gunakan $...$ inline dan $$...$$ blok.',
-    '- Output hanya markdown (tanpa JSON, tanpa ```).',
+    'Output rules:',
+    '- English, friendly, concise but clear.',
+    '- Tidy MARKDOWN format (title, summary, steps, example, exercises).',
+    '- Do not add concepts outside material (if needed, add note "(Needs teacher confirmation)").',
+    '- Include: 1 core summary, 1 example solved step-by-step, 2 exercises + short keys.',
+    '- Adaptive based on emotion: if Negative, give support + small steps; if Positive, give slight challenge.',
+    '- Adaptive based on learning style:',
+    '  - VISUAL: use simple ASCII tables/diagrams if suitable.',
+    '  - AUDITORY: use explanation style like a tutor narrator.',
+    '  - KINESTHETIC: use small activities/number experiments to try.',
+    '- For math: use $...$ inline and $$...$$ block.',
+    '- Output only markdown (no JSON, no ```).',
     '',
-    `EMOSI (terakhir diketahui): ${input.emotionLabel}`,
-    `GAYA BELAJAR: ${input.learningStyle}`,
+    `EMOTION (last known): ${input.emotionLabel}`,
+    `LEARNING STYLE: ${input.learningStyle}`,
     summary
-      ? `RINGKASAN PERFORMA: wrongCount=${summary.wrongCount}, avgScore=${Math.round(summary.avgScore)}`
-      : 'RINGKASAN PERFORMA: (tidak tersedia)',
+      ? `PERFORMANCE SUMMARY: wrongCount=${summary.wrongCount}, avgScore=${Math.round(summary.avgScore)}`
+      : 'PERFORMANCE SUMMARY: (not available)',
     '',
-    `JUDUL MATERI: ${input.materialTitle}`,
+    `MATERIAL TITLE: ${input.materialTitle}`,
     '',
-    'MATERI (ringkas, sumber utama):',
+    'MATERIAL (concise, primary source):',
     stripUnsafe(input.materialContent).slice(0, 7000),
     '',
     attempt
       ? [
-          'HASIL QUIZ TERAKHIR:',
-          `- Pertanyaan: ${stripUnsafe(attempt.question).slice(0, 400)}`,
-          `- Jawaban siswa: ${stripUnsafe(attempt.userAnswer).slice(0, 200)}`,
-          attempt.expectedAnswer ? `- Jawaban yang diharapkan: ${stripUnsafe(attempt.expectedAnswer).slice(0, 200)}` : '',
-          typeof attempt.score === 'number' ? `- Skor: ${attempt.score}` : '',
-          attempt.aiFeedback ? `- Feedback sistem: ${stripUnsafe(attempt.aiFeedback).slice(0, 400)}` : '',
+          'LAST QUIZ RESULTS:',
+          `- Question: ${stripUnsafe(attempt.question).slice(0, 400)}`,
+          `- Student answer: ${stripUnsafe(attempt.userAnswer).slice(0, 200)}`,
+          attempt.expectedAnswer ? `- Expected answer: ${stripUnsafe(attempt.expectedAnswer).slice(0, 200)}` : '',
+          typeof attempt.score === 'number' ? `- Score: ${attempt.score}` : '',
+          attempt.aiFeedback ? `- System feedback: ${stripUnsafe(attempt.aiFeedback).slice(0, 400)}` : '',
         ]
           .filter(Boolean)
           .join('\n')
-      : 'HASIL QUIZ TERAKHIR: (tidak tersedia)',
+      : 'LAST QUIZ RESULTS: (not available)',
   ]
     .filter(Boolean)
     .join('\n');
@@ -100,7 +100,7 @@ export async function generateRemedialMarkdown(input: RemedialInput): Promise<st
     return [
       `# Remedial: ${input.materialTitle}`,
       '',
-      'Maaf, materi remedial belum bisa dibuat otomatis saat ini. Coba ulangi lagi atau minta bantuan guru.',
+      'Sorry, remedial material cannot be generated automatically at this moment. Please try again or ask a teacher.',
     ].join('\n');
   }
 

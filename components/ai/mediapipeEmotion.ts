@@ -241,7 +241,7 @@ function computeHandOnCheekInfo(
   }
 
   // Tunable threshold based on face width.
-  // More permissive so "tangan menempel di pipi" triggers reliably.
+  // More permissive so "hand on cheek" triggers reliably.
   // Empirically, when the palm/fingers touch the cheek, the best landmark can still be
   // ~0.25-0.32 of face width away (due to perspective and occlusion).
   const touchThreshold = 0.42 * faceWidth;

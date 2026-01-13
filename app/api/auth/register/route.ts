@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'Email sudah terdaftar' },
+        { error: 'Email already registered' },
         { status: 400 }
       );
     }

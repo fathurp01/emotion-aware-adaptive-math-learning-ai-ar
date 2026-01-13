@@ -145,18 +145,26 @@ function sanitizeAiMarkdown(input: string): string {
 
 const EASY_READ_GLOSSARY: Record<string, string> = {
   // Keep this list intentionally small: only high-signal concepts.
-  'sistem persamaan linear dua variabel':
-    'SPLDV adalah dua persamaan linear yang melibatkan dua variabel yang sama (mis. x dan y).',
-  spldv:
-    'Singkatan dari Sistem Persamaan Linear Dua Variabel (SPLDV).',
-  'bentuk umum':
-    'Bentuk umum SPLDV biasanya ditulis sebagai: a₁x + b₁y = c₁ dan a₂x + b₂y = c₂.',
-  substitusi:
-    'Metode substitusi: ubah satu persamaan menjadi x = ... atau y = ..., lalu substitusikan ke persamaan lain.',
-  eliminasi:
-    'Metode eliminasi: samakan koefisien salah satu variabel, lalu jumlah/kurangi persamaan untuk menghilangkan variabel itu.',
-  koefisien:
-    'Koefisien adalah angka pengali variabel (mis. pada 3x, koefisien x adalah 3).',
+  'system of linear equations':
+    'A set of two or more linear equations involving the same variables.',
+  'variable':
+    'A symbol (usually a letter like x or y) representing an unknown value.',
+  'general form':
+    'The standard way of writing an equation, e.g., ax + by = c.',
+  'substitution':
+    'A method where you solve for one variable and plug it into another equation.',
+  'substitute':
+    'To replace a variable with a specific value or expression.',
+  'elimination':
+    'A method where you add or subtract equations to cancel out one variable.',
+  'eliminate':
+    'To remove a variable from an equation, usually by cancellation.',
+  'coefficient':
+    'A number used to multiply a variable (e.g., in 3x, 3 is the coefficient).',
+  'equation':
+    'A mathematical statement that two expressions are equal (contains an = sign).',
+  'linear equation':
+    'An equation where the highest power of the variable is 1 (graph is a straight line).',
 };
 
 function escapeRegex(literal: string): string {

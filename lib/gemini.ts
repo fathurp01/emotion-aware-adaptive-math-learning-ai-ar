@@ -317,16 +317,7 @@ export type LearningStyle = 'VISUAL' | 'AUDITORY' | 'KINESTHETIC';
 export type EmotionType =
   | 'Negative'
   | 'Neutral'
-  | 'Positive'
-  | 'Happy'
-  | 'Anxious'
-  | 'Confused'
-  | 'Frustrated'
-  | 'Sad'
-  | 'Angry'
-  | 'Fearful'
-  | 'Disgusted'
-  | 'Surprised';
+  | 'Positive';
 
 export interface QuizQuestion {
   question: string;
@@ -386,7 +377,7 @@ export async function generateQuiz(
         question: 'Explain the concept you just learned in your own words.',
         difficulty: 'MEDIUM',
         expectedAnswer: 'A clear explanation of the material content.',
-        hint: emotion === 'Negative' || emotion === 'Anxious' ? 'Take your time and think about the main points.' : undefined,
+        hint: emotion === 'Negative' ? 'Take your time and think about the main points.' : undefined,
       };
     }
 
@@ -412,8 +403,8 @@ export async function generateQuiz(
       'Return ONLY minified JSON (no markdown, no extra text) with keys:',
       'question, expectedAnswer, difficulty (EASY|MEDIUM|HARD), hint (optional), supportiveMessage (optional).',
       'Keep question and expectedAnswer very short (<= 25 words).',
-      emotion === 'Negative' || emotion === 'Anxious'
-        ? 'If EMOTION indicates struggle (Negative/Anxious): include hint + supportiveMessage.'
+      emotion === 'Negative'
+        ? 'If EMOTION indicates struggle (Negative): include hint + supportiveMessage.'
         : 'If not struggling: omit hint/supportiveMessage.',
     ].join('\n');
 
@@ -442,7 +433,7 @@ export async function generateQuiz(
       question: 'Explain the concept you just learned in your own words.',
       difficulty: 'MEDIUM',
       expectedAnswer: 'A clear explanation of the material content.',
-      hint: emotion === 'Negative' || emotion === 'Anxious' ? 'Take your time and think about the main points.' : undefined,
+      hint: emotion === 'Negative' ? 'Take your time and think about the main points.' : undefined,
     };
   }
 }
@@ -474,11 +465,11 @@ export async function generateCalculationQuizQuestion(
 
     if (isGeminiCoolingDown() && !isMistralConfigured()) {
       return {
-        question: 'Hitung hasil: 12 + 8 = ?',
+        question: 'Calculate the result: 12 + 8 = ?',
         expectedAnswer: '20',
         difficulty: 'EASY',
-        hint: emotion === 'Negative' || emotion === 'Anxious' ? 'Kerjakan pelan-pelan ya.' : undefined,
-        supportiveMessage: emotion === 'Negative' || emotion === 'Anxious' ? 'Kamu bisa.' : undefined,
+        hint: emotion === 'Negative' ? 'Take it slow.' : undefined,
+        supportiveMessage: emotion === 'Negative' ? 'You can do this.' : undefined,
       };
     }
 
@@ -504,8 +495,8 @@ export async function generateCalculationQuizQuestion(
       'Rules: question must require computing a numeric final answer. expectedAnswer MUST be only the final number (no words, no units).',
       'The question MUST be different from any in AVOID. Vary numbers/coefficients so questions are not repeated.',
       'Keep question short (<= 25 words).',
-      emotion === 'Negative' || emotion === 'Anxious'
-        ? 'If E indicates struggle (Negative/Anxious) include hint + supportiveMessage.'
+      emotion === 'Negative'
+        ? 'If E indicates struggle (Negative) include hint + supportiveMessage.'
         : 'If not struggling omit hint/supportiveMessage.',
     ]
       .filter(Boolean)
@@ -528,11 +519,11 @@ export async function generateCalculationQuizQuestion(
   } catch (error) {
     console.error('Error generating calculation quiz:', error);
     return {
-      question: 'Hitung hasil: 15 × 3 = ?',
+      question: 'Calculate the result: 15 × 3 = ?',
       expectedAnswer: '45',
       difficulty: 'EASY',
-      hint: emotion === 'Negative' || emotion === 'Anxious' ? 'Ingat perkalian itu penjumlahan berulang.' : undefined,
-      supportiveMessage: emotion === 'Negative' || emotion === 'Anxious' ? 'Tenang, kamu bisa.' : undefined,
+      hint: emotion === 'Negative' ? 'Remember multiplication is repeated addition.' : undefined,
+      supportiveMessage: emotion === 'Negative' ? 'Relax, you can do this.' : undefined,
     };
   }
 }
@@ -575,8 +566,9 @@ export async function generateFeedback(
       `EXPECTED: ${compactText(expectedAnswer, 120)}`,
       `STUDENT: ${compactText(userAnswer, 120)}`,
       'Rubric:',
-      '- For CALC: treat equivalent expressions as correct (e.g. "2+2" equals 4). Score 100 correct, 70 almost correct, 0 wrong/irrelevant.',
+      '- For CALC: Check if the STUDENT answer is numerically equivalent to the EXPECTED answer. Treat "2+2", "4", "4.0" as EQUAL. If equivalent, score 100. If close (e.g. rounding error), score 70. Otherwise 0.',
       '- For RECAP: score based on coverage of key points from MATERIAL. 100 good coverage, 70 partial, 40 minimal, 0 off-topic.',
+      '- Be lenient with formatting (spaces, units). Focus on the mathematical value/meaning.',
       'JSON keys: isCorrect(boolean), score(number 0-100), feedback(string <=2 sentences), encouragement(string <=1 sentence).',
     ]
       .filter(Boolean)
@@ -635,15 +627,6 @@ function getEmotionContext(emotion: EmotionType): string {
     Negative: 'The student seems to be struggling. Be EXTRA supportive, provide hints, simplify language, and use encouraging tone.',
     Neutral: 'The student is calm and focused. Use standard difficulty.',
     Positive: 'The student is confident and engaged. You can challenge them slightly more.',
-    Happy: 'The student is confident and engaged. You can challenge them slightly more.',
-    Anxious: 'The student is nervous or stressed. Be EXTRA supportive, provide hints, and use encouraging language. Simplify the question.',
-    Confused: 'The student is struggling to understand. Break things down step-by-step and use clear, simple language.',
-    Frustrated: 'The student is feeling overwhelmed. Offer reassurance and focus on small, achievable steps.',
-    Sad: 'The student may be discouraged. Be gentle, encouraging, and highlight their strengths.',
-    Surprised: 'The student is surprised. Keep the content engaging and interesting.',
-    Angry: 'The student is upset or frustrated. Use calming language and be patient.',
-    Fearful: 'The student is anxious or scared. Be very supportive and provide lots of encouragement.',
-    Disgusted: 'The student is disengaged. Try to make the content more appealing and relevant.',
   };
 
   return contexts[emotion] || contexts.Neutral;

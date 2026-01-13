@@ -181,11 +181,11 @@ export default function LearnMaterialPage() {
           updatedAt: String(payload.data.updatedAt ?? ''),
           emotionLabel: payload.data.emotionLabel,
         });
-        toast.success('Materi remedial siap');
+        toast.success('Remedial material ready');
       }
     } catch (error) {
       console.error('Remedial generation error:', error);
-      toast.error('Gagal membuat materi remedial');
+      toast.error('Failed to generate remedial material');
     } finally {
       setIsRemedialLoading(false);
     }
@@ -243,15 +243,15 @@ export default function LearnMaterialPage() {
     const buildEasyReadTriggerText = () => {
       const parts: string[] = [];
       if (currentEmotion?.label === 'Negative') {
-        parts.push('emosi Negative');
+        parts.push('Negative emotion');
       }
       if (typeof recentQuizAvgScore === 'number' && Number.isFinite(recentQuizAvgScore) && recentQuizAvgScore < 70) {
-        parts.push(`skor quiz rendah (avg ${Math.round(recentQuizAvgScore)})`);
+        parts.push(`low quiz score (avg ${Math.round(recentQuizAvgScore)})`);
       }
 
       if (parts.length === 0) {
         // Fallback: still explain that it's based on detected signals.
-        return 'indikasi kesulitan';
+        return 'detected difficulty';
       }
 
       return parts.join(' + ');
@@ -282,11 +282,14 @@ export default function LearnMaterialPage() {
             setEasyReadEnabled(true);
             setEasyReadAutoReason(buildEasyReadTriggerText());
             lastAutoEnabledAtRef.current = Date.now();
-            toast.info('Easy-Read Mode diaktifkan', {
-              description: `Dipicu oleh: ${buildEasyReadTriggerText()}.`,
+            toast.info('Easy-Read Mode activated', {
+              description: `Triggered by: ${buildEasyReadTriggerText()}.`,
               duration: 4000,
             });
           }, EASY_READ_DEBOUNCE_ON_MS);
+        } else if (easyReadEnabled) {
+          // Keep the reason text updated (e.g. language fix or emotion change)
+          setEasyReadAutoReason(buildEasyReadTriggerText());
         }
       } else {
         if (activationTimerRef.current) {
@@ -480,12 +483,12 @@ export default function LearnMaterialPage() {
                     <div className="font-semibold">Easy-Read Mode</div>
                     <div className="mt-1 text-blue-800">
                       {easyReadEnabled
-                        ? `Aktif${easyReadPreference === 'on' ? ' (manual)' : easyReadAutoReason ? ` (otomatis: ${easyReadAutoReason})` : ' (otomatis)'}.`
-                        : 'Nonaktif (manual).'}
+                        ? `Active${easyReadPreference === 'on' ? ' (manual)' : easyReadAutoReason ? ` (auto: ${easyReadAutoReason})` : ' (auto)'}.`
+                        : 'Inactive (manual).'}
                     </div>
                     {easyReadEnabled && easyReadPreference === 'auto' && (
                       <div className="mt-1 text-xs text-blue-700">
-                        Mode ini dibuat stabil agar tidak berubah-ubah setiap detik.
+                        This mode is stabilized to prevent flickering.
                       </div>
                     )}
                   </div>
@@ -495,14 +498,14 @@ export default function LearnMaterialPage() {
                         onClick={() => setEasyReadPreference('off')}
                         className="px-3 py-2 bg-white border border-blue-200 rounded-md text-sm text-blue-900 hover:bg-blue-100 transition-colors"
                       >
-                        Kembalikan
+                        Revert
                       </button>
                     ) : (
                       <button
                         onClick={() => setEasyReadPreference('auto')}
                         className="px-3 py-2 bg-white border border-blue-200 rounded-md text-sm text-blue-900 hover:bg-blue-100 transition-colors"
                       >
-                        Kembali ke Auto
+                        Back to Auto
                       </button>
                     )}
                   </div>
@@ -560,14 +563,14 @@ export default function LearnMaterialPage() {
             <div className="mt-6 bg-white rounded-lg shadow-sm border">
               <div className="p-6 border-b flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="font-semibold text-gray-900">Materi Remedial (Personal)</h3>
+                  <h3 className="font-semibold text-gray-900">Remedial Material (Personal)</h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    Dibuat berdasarkan hasil quiz dan emosi terakhir saat belajar.
+                    Generated based on quiz results and learning emotion.
                   </p>
                   {remedial?.updatedAt && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Terakhir diperbarui: {new Date(remedial.updatedAt).toLocaleString()}
-                      {remedial.emotionLabel ? ` • Emosi: ${remedial.emotionLabel}` : ''}
+                      Last updated: {new Date(remedial.updatedAt).toLocaleString()}
+                      {remedial.emotionLabel ? ` • Emotion: ${remedial.emotionLabel}` : ''}
                     </p>
                   )}
                 </div>
@@ -581,7 +584,7 @@ export default function LearnMaterialPage() {
                       : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
                   }`}
                 >
-                  {remedial ? (isRemedialLoading ? 'Memperbarui...' : 'Perbarui Remedial') : isRemedialLoading ? 'Membuat...' : 'Buat Remedial'}
+                  {remedial ? (isRemedialLoading ? 'Updating...' : 'Update Remedial') : isRemedialLoading ? 'Generating...' : 'Generate Remedial'}
                 </button>
               </div>
 
@@ -594,7 +597,7 @@ export default function LearnMaterialPage() {
                   />
                 ) : (
                   <div className="text-sm text-gray-600">
-                    Belum ada materi remedial. Biasanya dibuat setelah kamu menjawab quiz dan sistem mendeteksi kamu masih kesulitan.
+                    No remedial material yet. Usually generated after quiz if you struggle.
                   </div>
                 )}
               </div>
@@ -607,7 +610,7 @@ export default function LearnMaterialPage() {
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
                 <BookOpen className="w-5 h-5" />
-                Take Quiz
+                Start Quiz
               </button>
 
               <button
@@ -650,7 +653,7 @@ export default function LearnMaterialPage() {
                   </div>
                   {!currentEmotion && (
                     <p className="mt-2 text-xs text-gray-500">
-                      Start camera untuk mulai deteksi. Jika tidak terdeteksi, pastikan wajah terlihat jelas.
+                      Start camera to begin detection. Ensure face is visible.
                     </p>
                   )}
                 </div>

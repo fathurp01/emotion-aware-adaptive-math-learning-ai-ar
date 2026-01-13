@@ -167,15 +167,15 @@ export default function AudioReader({
     <div className="bg-white rounded-lg shadow-sm p-6 border">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-sm text-gray-500">Mode Audio</div>
-          <div className="font-semibold text-gray-900">{title ?? 'Bacakan materi'}</div>
+          <div className="text-sm text-gray-500">Audio Mode</div>
+          <div className="font-semibold text-gray-900">{title ?? 'Read material'}</div>
         </div>
-        <div className="text-xs text-gray-500">{status === 'playing' ? 'Memutar…' : status === 'paused' ? 'Pause' : status === 'error' ? 'Error' : 'Siap'}</div>
+        <div className="text-xs text-gray-500">{status === 'playing' ? 'Playing...' : status === 'paused' ? 'Paused' : status === 'error' ? 'Error' : 'Ready'}</div>
       </div>
 
       {!isSupported && (
         <p className="mt-3 text-sm text-red-700">
-          Browser ini tidak mendukung Text-to-Speech (Web Speech API).
+          This browser does not support Text-to-Speech (Web Speech API).
         </p>
       )}
 
@@ -186,7 +186,7 @@ export default function AudioReader({
             disabled={!canPlay}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isFetchingScript ? 'Menyiapkan…' : 'Play'}
+            {isFetchingScript ? 'Preparing...' : 'Play'}
           </button>
         )}
 
@@ -218,7 +218,7 @@ export default function AudioReader({
         )}
 
         <label className="ml-auto flex items-center gap-2 text-sm text-gray-700">
-          <span className="text-gray-500">Kecepatan</span>
+          <span className="text-gray-500">Speed</span>
           <select
             value={rate}
             onChange={(e) => setRate(parseFloat(e.target.value))}
@@ -234,7 +234,7 @@ export default function AudioReader({
       </div>
 
       <p className="mt-3 text-xs text-gray-500">
-        Audio membacakan teks materi yang sama (hemat kuota prompt).
+        Audio reads the same material text (saves prompt quota).
       </p>
     </div>
   );

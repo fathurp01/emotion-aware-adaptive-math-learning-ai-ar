@@ -807,10 +807,10 @@ export default function EmotionCamera({
               console.error('Webcam permission / device error:', err);
               const msg =
                 typeof window !== 'undefined' && window.isSecureContext === false
-                  ? 'Kamera diblokir karena koneksi tidak aman (HTTP). Buka lewat HTTPS atau gunakan Chrome (bukan in-app browser).'
+                  ? 'Camera blocked due to insecure connection (HTTP). Open via HTTPS or use Chrome (not in-app browser).'
                   : String((err as any)?.message || '').toLowerCase().includes('not implemented')
-                    ? 'getUserMedia tidak tersedia di browser ini. Coba pakai Google Chrome/Edge (bukan in-app browser) dan izinkan akses kamera.'
-                    : 'Gagal mengakses kamera. Cek izin kamera di browser dan pastikan tidak sedang dipakai aplikasi lain.';
+                    ? 'getUserMedia is not available in this browser. Try using Google Chrome/Edge (not an in-app browser) and allow camera access.'
+                    : 'Failed to access camera. Check browser camera permissions and ensure it is not being used by another application.';
               setError(msg);
             }}
             className="w-full h-auto"

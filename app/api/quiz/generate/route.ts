@@ -169,10 +169,10 @@ export async function POST(request: NextRequest) {
     if (questionIndex === 1) {
       const hint =
         canonicalEmotion === 'Negative'
-          ? 'Tulis poin pentingnya pelan-pelan: definisi, rumus, dan contoh.'
+          ? 'Write down key points slowly: definition, formula, and example.'
           : undefined;
       const supportiveMessage =
-        canonicalEmotion === 'Negative' ? 'Tenang, fokus ke poin-poin utama ya.' : undefined;
+        canonicalEmotion === 'Negative' ? 'Relax, focus on the main points.' : undefined;
 
       const duration = Date.now() - startTime;
       logRequest('POST', '/api/quiz/generate', duration, 200);
@@ -181,8 +181,8 @@ export async function POST(request: NextRequest) {
         data: {
           questionIndex,
           questionType: 'RECAP',
-          question: `Sebutkan apa saja yang kamu pelajari dari materi: "${material.title}". Jelaskan singkat.`,
-          expectedAnswer: 'Ringkasan konsep/rumus utama dan contoh singkat.',
+          question: `Mention what you learned from the material: "${material.title}". Explain briefly.`,
+          expectedAnswer: 'Summary of main concepts/formulas and short example.',
           difficulty: 'EASY',
           hint,
           supportiveMessage,
@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
       canonicalEmotion === 'Negative';
 
     const struggleNudge = struggleDetected
-      ? 'Sepertinya kamu kesulitan, coba selesaikan ini:'
+      ? 'It seems you are struggling, try solving this:'
       : undefined;
 
     // If struggling (wrong/time/negative), automatically lower difficulty.

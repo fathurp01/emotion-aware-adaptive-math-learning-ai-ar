@@ -4,25 +4,25 @@
 
 ### Option 1: Vercel (Recommended) ⭐
 
-Vercel adalah platform terbaik untuk Next.js karena dibuat oleh team yang sama.
+Vercel is the best platform for Next.js as it is created by the same team.
 
 #### Prerequisites:
-- Vercel account (gratis)
+- Vercel account (free)
 - GitHub/GitLab account
-- Cloud MySQL database (PlanetScale, Railway, atau AWS RDS)
+- Cloud MySQL database (PlanetScale, Railway, or AWS RDS)
 
 #### Steps:
 
 **1. Prepare Production Database**
 
-Pilihan A: PlanetScale (Recommended)
+Option A: PlanetScale (Recommended)
 ```bash
 # 1. Sign up: https://planetscale.com
 # 2. Create new database: "emotion-learning-prod"
 # 3. Copy connection string
 ```
 
-Pilihan B: Railway
+Option B: Railway
 ```bash
 # 1. Sign up: https://railway.app
 # 2. New Project → Add MySQL
@@ -125,7 +125,7 @@ Test checklist:
 
 ### Option 2: Railway
 
-Railway supports full-stack deployment dengan database included.
+Railway supports full-stack deployment with database included.
 
 #### Steps:
 

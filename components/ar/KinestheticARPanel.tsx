@@ -107,7 +107,7 @@ function buildSimpleStepsFromText(text: string, maxSteps: number): string[] {
 
   // Convert into imperative-ish prompts.
   return base.map((s, idx) => {
-    const prefix = idx === 0 ? 'Amati' : idx === 1 ? 'Coba' : 'Lanjutkan';
+    const prefix = idx === 0 ? 'Observe' : idx === 1 ? 'Try' : 'Continue';
     return `${prefix}: ${s}`;
   });
 }
@@ -168,7 +168,7 @@ export default function KinestheticARPanel({
       );
 
       if (!res.ok) {
-        let msg = `Gagal membuat penjelasan (HTTP ${res.status})`;
+        let msg = `Failed to generate explanation (HTTP ${res.status})`;
         try {
           const body = (await res.json()) as { error?: string; message?: string };
           msg = body?.message || body?.error || msg;
@@ -198,10 +198,10 @@ export default function KinestheticARPanel({
           console.groupEnd();
         }
       } else {
-        setExplainError('Penjelasan kosong. Coba klik “Regenerate penjelasan”.');
+        setExplainError('Explanation empty. Try "Regenerate".');
       }
     } catch (e) {
-      setExplainError(e instanceof Error ? e.message : 'Gagal membuat penjelasan AR.');
+      setExplainError(e instanceof Error ? e.message : 'Failed to generate AR explanation.');
       if (typeof window !== 'undefined') {
         console.error('[AR] ensureExplanation exception', { materialId, error: e });
       }
@@ -227,7 +227,7 @@ export default function KinestheticARPanel({
       );
 
       if (!res.ok) {
-        let msg = `Gagal menyiapkan AR (HTTP ${res.status})`;
+        let msg = `Failed to setup AR (HTTP ${res.status})`;
         try {
           const body = (await res.json()) as { error?: string; message?: string };
           msg = body?.message || body?.error || msg;
@@ -273,7 +273,7 @@ export default function KinestheticARPanel({
         // Fire-and-forget explanation generation for a better UX.
         void ensureExplanation();
       } else {
-        setRecipeError('AR recipe kosong. Coba klik “Buat AR”.');
+        setRecipeError('AR recipe empty. Try "Generate AR".');
         if (typeof window !== 'undefined') {
           console.warn('[AR] Recipe response missing arRecipe', { materialId, force: Boolean(force), json });
         }
@@ -282,7 +282,7 @@ export default function KinestheticARPanel({
       setRecipeError(
         e instanceof Error
           ? e.message
-          : 'Gagal menyiapkan AR. Coba refresh halaman dan pastikan sudah login.'
+          : 'Failed to prepare AR. Try refreshing page and ensure you are logged in.'
       );
       if (typeof window !== 'undefined') {
         console.error('[AR] ensureRecipe exception', { materialId, force: Boolean(force), error: e });
@@ -296,13 +296,13 @@ export default function KinestheticARPanel({
     setDeviceInitError(null);
 
     if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
-      setDeviceInitError('Browser tidak mendukung akses kamera (mediaDevices).');
+      setDeviceInitError('Browser does not support camera access (mediaDevices).');
       return;
     }
 
     if (typeof window !== 'undefined' && window.isSecureContext === false) {
       setDeviceInitError(
-        'Akses kamera diblokir karena koneksi tidak aman (HTTP). Untuk HP, gunakan HTTPS (mis. tunnel) atau buka via Chrome dan aktifkan opsi insecure-origin jika terpaksa.'
+        'Camera access blocked due to insecure connection (HTTP). For mobile, use HTTPS (e.g., tunnel) or open via Chrome and enable insecure-origin if necessary.'
       );
       return;
     }
@@ -345,9 +345,9 @@ export default function KinestheticARPanel({
       const picked = back || droid || integrated || usb || notPhoneLink || videos[0];
       setSelectedVideoDeviceId(picked?.deviceId || '');
     } catch (e) {
-      const raw = e instanceof Error ? e.message : 'Gagal mengakses kamera.';
+      const raw = e instanceof Error ? e.message : 'Failed to access camera.';
       const msg = raw.toLowerCase().includes('not implemented')
-        ? 'getUserMedia tidak tersedia di browser ini. Coba pakai Google Chrome (bukan in-app browser seperti Instagram/Telegram) dan izinkan kamera.'
+        ? 'getUserMedia not available in this browser. Try using Google Chrome (not in-app browser like Instagram/Telegram) and allow camera.'
         : raw;
       setDeviceInitError(msg);
     }
@@ -415,7 +415,7 @@ export default function KinestheticARPanel({
   }, [instructionsVisible, mirrored, overlayOpacity, visualOverlayEnabled, webxr3dEnabled]);
 
   const overlayTemplate = recipe?.template;
-  const overlayTitle = recipe?.shortGoal || 'Ikuti langkah di bawah.';
+  const overlayTitle = recipe?.shortGoal || 'Follow steps below.';
 
   const renderVisualOverlay = () => {
     if (!visualOverlayEnabled) return null;
@@ -441,7 +441,7 @@ export default function KinestheticARPanel({
       const overlay = recipe?.overlay;
       const leftRight = isBalanceScaleOverlay(overlay)
         ? { left: overlay.left, right: overlay.right, highlight: overlay.highlight }
-        : { left: 'Persamaan kiri', right: 'Persamaan kanan', highlight: undefined };
+        : { left: 'Left equation', right: 'Right equation', highlight: undefined };
 
       return (
         <div className="absolute inset-0 pointer-events-none" style={style}>
@@ -456,7 +456,7 @@ export default function KinestheticARPanel({
             <text x="300" y="305" textAnchor="middle" fill="rgba(255,255,255,0.95)" fontSize="18">{leftRight.left}</text>
             <text x="700" y="305" textAnchor="middle" fill="rgba(255,255,255,0.95)" fontSize="18">{leftRight.right}</text>
             <text x="500" y="520" textAnchor="middle" fill="rgba(255,255,255,0.85)" fontSize="18">
-              {leftRight.highlight || 'Tulis persamaan → pindahkan suku → isolasi variabel'}
+              {leftRight.highlight || 'Write equation → move terms → isolate variable'}
             </text>
           </svg>
         </div>
@@ -464,20 +464,69 @@ export default function KinestheticARPanel({
     }
 
     if (overlayTemplate === 'number_line') {
+      const overlay = recipe?.overlay;
+      // Default / fallback values
+      const rawStart = overlay?.start;
+      const startVal = typeof rawStart === 'number' ? rawStart : 0;
+      const jumps = Array.isArray(overlay?.jumps) ? (overlay.jumps as number[]) : [];
+      const minVal = typeof overlay?.min === 'number' ? (overlay.min as number) : startVal - 5;
+      const maxVal = typeof overlay?.max === 'number' ? (overlay.max as number) : startVal + 5;
+      const range = maxVal - minVal || 10;
+      
+      const mapX = (val: number) => 120 + ((val - minVal) / range) * 760;
+
       return (
         <div className="absolute inset-0 pointer-events-none" style={style}>
           {common}
           <svg className="absolute inset-0" viewBox="0 0 1000 560" preserveAspectRatio="none">
-            <line x1="120" y1="330" x2="880" y2="330" stroke="rgba(255,255,255,0.85)" strokeWidth="6" />
-            {[...Array(9)].map((_, i) => {
-              const x = 160 + i * 85;
+            {/* Main axis */}
+            <line x1="100" y1="330" x2="900" y2="330" stroke="rgba(255,255,255,0.85)" strokeWidth="6" />
+            
+            {/* Ticks */}
+            {[...Array(Math.floor(range) + 1)].map((_, i) => {
+              const val = Math.ceil(minVal) + i;
+              if (val > maxVal) return null;
+              const x = mapX(val);
               return (
-                <line key={x} x1={x} y1="310" x2={x} y2="350" stroke="rgba(255,255,255,0.75)" strokeWidth="4" />
+                <g key={val}>
+                   <line x1={x} y1="310" x2={x} y2="350" stroke="rgba(255,255,255,0.75)" strokeWidth="4" />
+                   {/* Label important ticks */}
+                   {(val === startVal || val === 0 || i % 5 === 0) && (
+                     <text x={x} y="380" textAnchor="middle" fill="white" fontSize="20">{val}</text>
+                   )}
+                </g>
               );
             })}
-            <path d="M 470 290 Q 520 240 580 290" fill="none" stroke="rgba(80,200,255,0.9)" strokeWidth="6" />
-            <polygon points="580,290 560,285 565,305" fill="rgba(80,200,255,0.9)" />
-            <text x="500" y="240" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="18">Lompat + / - di garis bilangan</text>
+
+            {/* Jumps */}
+            {(() => {
+              let current = startVal;
+              return jumps.map((jump, i) => {
+                const next = current + jump;
+                const x1 = mapX(current);
+                const x2 = mapX(next);
+                const mx = (x1 + x2) / 2;
+                const dist = Math.abs(x2 - x1);
+                const h = Math.min(150, dist * 0.5); // arc height
+                const path = `M ${x1} 310 Q ${mx} ${310 - h} ${x2} 310`;
+                const el = (
+                  <g key={i}>
+                    <path d={path} fill="none" stroke={jump >= 0 ? "rgba(80,255,100,0.9)" : "rgba(255,80,80,0.9)"} strokeWidth="6" />
+                    {/* Arrow head */}
+                    <polygon points={`${x2},310 ${x2-10},${310-10*Math.sign(jump)} ${x2+10},${310-10*Math.sign(jump)}`} fill="white" />
+                  </g>
+                );
+                current = next;
+                return el;
+              });
+            })()}
+
+            {/* Start marker */}
+            <circle cx={mapX(startVal)} cy="330" r="8" fill="yellow" />
+            
+            <text x="500" y="200" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="22">
+              Start at {startVal}, then {jumps.map(j => (j > 0 ? `+${j}` : `${j}`)).join(' ')}
+            </text>
           </svg>
         </div>
       );
@@ -561,7 +610,7 @@ export default function KinestheticARPanel({
             ) : null}
 
             <text x="520" y="150" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="18">
-              Grafik dari persamaan (a·x + b·y = c)
+              Graph of equation (a·x + b·y = c)
             </text>
           </svg>
         </div>
@@ -569,37 +618,91 @@ export default function KinestheticARPanel({
     }
 
     if (overlayTemplate === 'fraction_blocks') {
+      const overlay = recipe?.overlay;
+      const fracs = Array.isArray(overlay?.fractions) ? (overlay.fractions as string[]) : ['1/2'];
+      
       return (
         <div className="absolute inset-0 pointer-events-none" style={style}>
           {common}
           <svg className="absolute inset-0" viewBox="0 0 1000 560" preserveAspectRatio="none">
-            <rect x="240" y="180" width="520" height="90" rx="10" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.65)" strokeWidth="2" />
-            <rect x="240" y="300" width="520" height="90" rx="10" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.65)" strokeWidth="2" />
-            {[...Array(6)].map((_, i) => {
-              const x = 240 + i * (520 / 6);
+            {/* Title */}
+            <text x="500" y="100" textAnchor="middle" fill="white" fontSize="24">Comparing Fractions</text>
+
+            {fracs.map((fStr, idx) => {
+              const [n, d] = fStr.split('/').map(Number);
+              if (!d) return null;
+              
+              const yBase = 150 + idx * 120;
+              const width = 600;
+              const xStart = 200;
+              const cellW = width / d;
+
               return (
-                <line key={x} x1={x} y1="180" x2={x} y2="270" stroke="rgba(255,255,255,0.35)" strokeWidth="2" />
+                <g key={idx}>
+                  <text x={150} y={yBase + 55} fill="white" fontSize="24">{fStr}</text>
+                  {/* Background bar */}
+                  <rect x={xStart} y={yBase} width={width} height="90" rx="4" fill="rgba(255,255,255,0.1)" stroke="white" strokeWidth="2" />
+                  
+                  {/* Filled parts */}
+                  {[...Array(n)].map((_, i) => (
+                     <rect key={i} x={xStart + i * cellW} y={yBase} width={cellW} height="90" fill="rgba(80, 200, 255, 0.6)" stroke="white" strokeWidth="1" />
+                  ))}
+                  
+                  {/* Grid lines */}
+                  {[...Array(d)].map((_, i) => (
+                     <line key={i} x1={xStart + i * cellW} y1={yBase} x2={xStart + i * cellW} y2={yBase + 90} stroke="rgba(255,255,255,0.3)" />
+                  ))}
+                </g>
               );
             })}
-            <rect x="240" y="180" width={(520 / 6) * 3} height="90" rx="10" fill="rgba(120,220,120,0.35)" />
-            <text x="520" y="160" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="18">Warnai bagian pecahan</text>
           </svg>
         </div>
       );
     }
 
     if (overlayTemplate === 'algebra_tiles') {
+      const overlay = recipe?.overlay;
+      const tiles = (overlay?.tiles as any) || { x2: 1, x: 2, constant: 1 };
+      
+      const drawTiles = (count: number, type: 'x2'|'x'|'1', xStart: number, yStart: number) => {
+        const els = [];
+        let w = 0, h = 0, color = '', label = '';
+        if (type === 'x2') { w = 100; h = 100; color = 'rgba(80,200,255,0.8)'; label = 'x²'; }
+        else if (type === 'x') { w = 100; h = 40; color = 'rgba(100,255,100,0.8)'; label = 'x'; }
+        else { w = 40; h = 40; color = 'rgba(255,200,50,0.8)'; label = '1'; }
+
+        for (let i = 0; i < count; i++) {
+           const x = xStart + (i % 5) * (w + 10);
+           const y = yStart + Math.floor(i / 5) * (h + 10);
+           els.push(
+             <g key={`${type}-${i}`}>
+               <rect x={x} y={y} width={w} height={h} rx="4" fill={color} stroke="white" strokeWidth="2" />
+               <text x={x + w/2} y={y + h/2 + 5} textAnchor="middle" fill="black" fontSize="16" fontWeight="bold">{label}</text>
+             </g>
+           );
+        }
+        return els;
+      };
+
       return (
         <div className="absolute inset-0 pointer-events-none" style={style}>
           {common}
           <svg className="absolute inset-0" viewBox="0 0 1000 560" preserveAspectRatio="none">
-            <rect x="260" y="170" width="160" height="160" rx="8" fill="rgba(80,200,255,0.25)" stroke="rgba(80,200,255,0.8)" strokeWidth="3" />
-            <rect x="460" y="210" width="80" height="120" rx="8" fill="rgba(255,180,80,0.25)" stroke="rgba(255,180,80,0.85)" strokeWidth="3" />
-            <rect x="570" y="240" width="80" height="90" rx="8" fill="rgba(255,80,120,0.20)" stroke="rgba(255,80,120,0.75)" strokeWidth="3" />
-            <text x="340" y="360" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="18">x²</text>
-            <text x="500" y="360" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="18">x</text>
-            <text x="610" y="360" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="18">1</text>
-            <text x="520" y="150" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="18">Gabungkan ubin sejenis</text>
+            {/* x^2 Section */}
+            <text x="150" y="150" fill="white" fontSize="20">x² Terms ({tiles.x2})</text>
+            {drawTiles(tiles.x2 || 0, 'x2', 150, 170)}
+            
+            {/* x Section */}
+            <text x="450" y="150" fill="white" fontSize="20">x Terms ({tiles.x})</text>
+            {drawTiles(tiles.x || 0, 'x', 450, 170)}
+
+            {/* Constant Section */}
+            <text x="750" y="150" fill="white" fontSize="20">Constants ({tiles.constant})</text>
+            {drawTiles(tiles.constant || 0, '1', 750, 170)}
+
+            <text x="500" y="520" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="20">
+              Combine tiles to simplify expression
+            </text>
           </svg>
         </div>
       );
@@ -613,7 +716,7 @@ export default function KinestheticARPanel({
           <rect x="80" y="70" width="840" height="420" rx="14" fill="rgba(0,0,0,0.18)" stroke="rgba(255,255,255,0.35)" strokeWidth="2" />
           <line x1="500" y1="120" x2="500" y2="440" stroke="rgba(255,255,255,0.25)" strokeWidth="2" />
           <line x1="160" y1="280" x2="840" y2="280" stroke="rgba(255,255,255,0.25)" strokeWidth="2" />
-          <text x="500" y="520" textAnchor="middle" fill="rgba(255,255,255,0.85)" fontSize="18">Arahkan kamera ke buku/layar materi</text>
+          <text x="500" y="520" textAnchor="middle" fill="rgba(255,255,255,0.85)" fontSize="18">Point camera at book/screen material</text>
         </svg>
       </div>
     );
@@ -623,8 +726,8 @@ export default function KinestheticARPanel({
     <div className="bg-white rounded-lg shadow-sm p-6 border">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-sm text-gray-500">Mode Kinestetik</div>
-          <div className="font-semibold text-gray-900">AR Pendamping: {title}</div>
+          <div className="text-sm text-gray-500">Kinesthetic Mode</div>
+          <div className="font-semibold text-gray-900">AR Companion: {title}</div>
         </div>
         <button
           onClick={() => {
@@ -643,12 +746,12 @@ export default function KinestheticARPanel({
               : 'bg-blue-600 hover:bg-blue-700 text-white'
           }`}
         >
-          {active ? 'Tutup AR' : isLoadingRecipe ? 'Menyiapkan…' : 'Mulai AR'}
+          {active ? 'Close AR' : isLoadingRecipe ? 'Preparing...' : 'Start AR'}
         </button>
       </div>
 
       <p className="mt-3 text-xs text-gray-500">
-        Ini AR ringan berbasis kamera (browser) + overlay instruksi. Konten teks tetap jadi patokan.
+        This is lightweight browser-based AR + instruction overlay. Text content remains the reference.
       </p>
 
       {active && (
@@ -660,7 +763,7 @@ export default function KinestheticARPanel({
               className="text-xs px-2 py-1 rounded-md border bg-white hover:bg-gray-50"
               disabled={isLoadingRecipe}
             >
-              {isLoadingRecipe ? 'Menyiapkan AR…' : recipe ? 'AR Siap' : 'Buat AR'}
+              {isLoadingRecipe ? 'Preparing AR...' : recipe ? 'AR Ready' : 'Generate AR'}
             </button>
             {recipe ? (
               <button
@@ -671,7 +774,7 @@ export default function KinestheticARPanel({
                 }}
                 className="text-xs px-2 py-1 rounded-md border bg-white hover:bg-gray-50"
                 disabled={isLoadingRecipe}
-                title="Regenerate AR jika overlay tidak sesuai atau prompt/schema baru"
+                title="Regenerate AR if overlay doesn't match or for new schema"
               >
                 Regenerate
               </button>
@@ -679,7 +782,7 @@ export default function KinestheticARPanel({
             {recipeError ? <span className="text-xs text-red-600">{recipeError}</span> : null}
             {!recipeError && isLoadingRecipe ? (
               <span className="text-xs text-gray-600">
-                Jika pertama kali, bisa butuh beberapa detik.
+                First time might take a few seconds.
               </span>
             ) : null}
           </div>
@@ -695,14 +798,14 @@ export default function KinestheticARPanel({
           )}
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <label className="text-xs font-medium text-gray-700">Pilih kamera:</label>
+            <label className="text-xs font-medium text-gray-700">Select camera:</label>
             <select
               value={selectedVideoDeviceId}
               onChange={(e) => setSelectedVideoDeviceId(e.target.value)}
               className="text-xs border rounded-md px-2 py-1 bg-white"
             >
               {videoDevices.length === 0 ? (
-                <option value="">(memuat daftar kamera…)</option>
+                <option value="">(loading cameras...)</option>
               ) : (
                 videoDevices.map((d, idx) => (
                   <option key={d.deviceId} value={d.deviceId}>
@@ -739,7 +842,7 @@ export default function KinestheticARPanel({
                 onChange={(e) => setVisualOverlayEnabled(e.target.checked)}
                 disabled={webxr3dEnabled}
               />
-              Overlay visual
+              Visual Overlay
             </label>
             <label className="inline-flex items-center gap-2">
               <input
@@ -748,7 +851,7 @@ export default function KinestheticARPanel({
                 onChange={(e) => setInstructionsVisible(e.target.checked)}
                 disabled={webxr3dEnabled}
               />
-              Instruksi
+              Instructions
             </label>
             <label className="inline-flex items-center gap-2">
               <input
@@ -797,10 +900,10 @@ export default function KinestheticARPanel({
                     const raw = String((err as any)?.message || err || '');
                     const msg =
                       typeof window !== 'undefined' && window.isSecureContext === false
-                        ? 'Akses kamera diblokir karena koneksi tidak aman (HTTP). Untuk HP, gunakan HTTPS (tunnel) atau buka via localhost.'
+                        ? 'Camera access blocked due to insecure connection (HTTP). For mobile, use HTTPS (tunnel) or open via localhost.'
                         : raw.toLowerCase().includes('not implemented')
-                          ? 'getUserMedia tidak tersedia di browser ini. Coba pakai Google Chrome (bukan in-app browser) dan izinkan kamera.'
-                          : 'Gagal mengakses kamera. Cek izin kamera di browser.';
+                          ? 'getUserMedia not available in this browser. Try using Google Chrome (not in-app browser) and allow camera.'
+                          : 'Failed to access camera. Check camera permissions.';
                     setDeviceInitError(msg);
                     if (typeof window !== 'undefined') {
                       console.error('[AR] Webcam userMedia error', err);
@@ -820,7 +923,7 @@ export default function KinestheticARPanel({
                         ))}
                       </ol>
                     ) : (
-                      <div className="mt-1 text-xs">Instruksi belum tersedia untuk materi ini.</div>
+                      <div className="mt-1 text-xs">Instructions not yet available for this material.</div>
                     )}
                   </div>
                 ) : null}
@@ -836,7 +939,7 @@ export default function KinestheticARPanel({
                 onClick={() => void ensureExplanation({ force: true })}
                 className="text-xs px-2 py-1 rounded-md border bg-white hover:bg-gray-50"
                 disabled={isLoadingExplain}
-                title="Buat ulang penjelasan dengan AI"
+                title="Regenerate explanation with AI"
               >
                 {isLoadingExplain ? 'Membuat…' : 'Regenerate penjelasan'}
               </button>
@@ -850,7 +953,7 @@ export default function KinestheticARPanel({
               ) : isLoadingExplain ? (
                 <p className="text-gray-500">Menyiapkan penjelasan singkat…</p>
               ) : (
-                <p className="text-gray-500">Klik “Regenerate penjelasan” untuk membuat penjelasan AR.</p>
+                <p className="text-gray-500">Click "Regenerate explanation" to create AR instructions.</p>
               )}
             </div>
           </div>

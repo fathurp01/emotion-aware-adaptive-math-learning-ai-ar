@@ -2,32 +2,32 @@
 
 ## Prerequisites
 
-Sebelum memulai, pastikan sudah menginstall:
+Before starting, ensure you have installed:
 
-- **Node.js** 18.x atau lebih tinggi
-- **Disarankan:** Node.js **20 LTS** (lebih stabil untuk Next.js 14 di Windows)
-- **MySQL** 8.0 atau lebih tinggi
-- **Git** (untuk version control)
-- **AI API Key** (minimal salah satu):
-   - **Gemini API Key** (gratis dari [ai.google.dev](https://ai.google.dev))
-   - **Mistral API Key** (dari [console.mistral.ai](https://console.mistral.ai))
+- **Node.js** 18.x or higher
+- **Recommended:** Node.js **20 LTS** (more stable for Next.js 14 on Windows)
+- **MySQL** 8.0 or higher
+- **Git** (for version control)
+- **AI API Key** (at least one):
+   - **Gemini API Key** (free from [ai.google.dev](https://ai.google.dev))
+   - **Mistral API Key** (from [console.mistral.ai](https://console.mistral.ai))
 
 ## Step-by-Step Installation
 
-> Catatan (Windows): Jika `npm run dev`/`next dev` memunculkan error filesystem seperti `UNKNOWN ... open .next\\static\\chunks\\webpack.js` atau `EPERM`, biasanya ini terjadi pada Node versi terbaru (mis. 22.x) atau karena file `.next` sedang terkunci (antivirus / proses Node lain). Paling aman gunakan Node **20 LTS** dan pastikan tidak ada proses `node.exe` lain yang masih berjalan.
+> Note (Windows): If `npm run dev`/`next dev` shows filesystem errors like `UNKNOWN ... open .next\\static\\chunks\\webpack.js` or `EPERM`, this usually happens on newer Node versions (e.g., 22.x) or because `.next` file is locked (antivirus / other Node process). Safest to use Node **20 LTS** and ensure no other `node.exe` processes are running.
 
-Jika kamu belum bisa ganti versi Node, coba jalankan dev server dengan Turbopack:
+If you cannot change Node version, try running dev server with Turbopack:
 
 ```bash
 npm run dev:turbo
 ```
 
-### Catatan workflow (penting di Windows)
+### Workflow notes (important on Windows)
 
-- Jalankan dev server (`npm run dev` / `npm run dev:turbo`) di **terminal khusus** dan biarkan tetap hidup.
-- Untuk perintah sekali jalan (mis. `npm run db:push`, `npm run precompute-materials`, atau `Invoke-WebRequest`), pakai **terminal baru**.
+- Run dev server (`npm run dev` / `npm run dev:turbo`) in a **dedicated terminal** and leave it running.
+- For one-off commands (e.g. `npm run db:push`, `npm run precompute-materials`, or `Invoke-WebRequest`), use a **new terminal**.
 
-Kalau perintah-perintah itu dijalankan di terminal yang sama dengan dev server, proses server bisa berhenti/terganggu dan memicu error filesystem seperti `.next\\static\\chunks\\...`.
+If those commands are run in the same terminal as dev server, server process might stop/interrupt and trigger filesystem errors like `.next\\static\\chunks\\...`.
 
 ### 1. Install Dependencies
 
@@ -35,17 +35,17 @@ Kalau perintah-perintah itu dijalankan di terminal yang sama dengan dev server, 
 npm install
 ```
 
-Ini akan menginstall 536 packages termasuk:
+This will install 536 packages including:
 - Next.js 14.2.18
 - React 18.3.1
 - TensorFlow.js 4.22.0
 - Prisma 5.22.0
 - Google Generative AI
-- Dan dependencies lainnya
+- And other dependencies
 
 ### 2. Setup Environment Variables
 
-Buat file `.env` di root folder:
+Create `.env` file in root folder:
 
 ```env
 DATABASE_URL="mysql://root:your_password@localhost:3306/emotion_learning_db"
@@ -57,31 +57,31 @@ MISTRAL_API_KEY="your_mistral_api_key_here"
 AUTH_SECRET="random_secret_key_min_32_characters"
 ```
 
-Catatan:
-- Kamu cukup mengisi **salah satu**: `GEMINI_API_KEY` atau `MISTRAL_API_KEY`.
-- Jika Gemini tidak ada atau rate-limited, sistem otomatis fallback ke Mistral (jika `MISTRAL_API_KEY` terpasang).
+Notes:
+- You only need to fill **one**: `GEMINI_API_KEY` or `MISTRAL_API_KEY`.
+- If Gemini is missing or rate-limited, system automatically falls back to Mistral (if `MISTRAL_API_KEY` is set).
 
-**Cara mendapatkan Gemini API Key:**
-1. Kunjungi [https://ai.google.dev](https://ai.google.dev)
-2. Klik "Get API Key"
-3. Login dengan Google account
-4. Generate API key (gratis)
-5. Copy ke `.env` file
+**How to get Gemini API Key:**
+1. Visit [https://ai.google.dev](https://ai.google.dev)
+2. Click "Get API Key"
+3. Login with Google account
+4. Generate API key (free)
+5. Copy to `.env` file
 
 **Generate AUTH_SECRET (recommended):**
 ```bash
-# Di terminal/PowerShell:
+# In terminal/PowerShell:
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
 ### 3. Setup MySQL Database
 
-**Buka MySQL:**
+**Open MySQL:**
 ```bash
 mysql -u root -p
 ```
 
-**Buat database:**
+**Create database:**
 ```sql
 CREATE DATABASE emotion_learning_db;
 EXIT;
@@ -93,72 +93,72 @@ EXIT;
 # Generate Prisma Client
 npm run db:generate
 
-# Push schema ke database
+# Push schema to database
 npm run db:push
 ```
 
-Perintah ini akan membuat 5 tabel:
+This command will create 5 tables:
 - `User` (students & teachers)
-- `Chapter` (bab pembelajaran)
-- `Material` (materi pembelajaran)
-- `QuizLog` (hasil quiz)
-- `EmotionLog` (log deteksi emosi)
+- `Chapter` (learning chapters)
+- `Material` (learning materials)
+- `QuizLog` (quiz results)
+- `EmotionLog` (emotion detection logs)
 
-### 5. Seed Sample Data (PENTING!)
+### 5. Seed Sample Data (IMPORTANT!)
 
 ```bash
 npm run db:seed
 ```
 
-Ini akan membuat:
+This will create:
 - 2 demo users (teacher & student)
-- 2 chapters (Aljabar Dasar, Geometri)
-- 3 materials (Persamaan Linear, Sistem Persamaan, Lingkaran)
+- 2 chapters (Basic Algebra, Geometry)
+- 3 materials (Linear Equation, System of Equations, Circle)
 
-**Demo accounts yang dibuat:**
+**Demo accounts created:**
 - Teacher: `teacher@demo.com` / `password123`
 - Student: `student@demo.com` / `password123`
 
 ### 6. Prepare Emotion Detection Model
 
-Sistem frontend memakai TensorFlow.js untuk klasifikasi emosi.
+Frontend system uses TensorFlow.js for emotion classification.
 
-**Default path (tanpa konfigurasi tambahan):**
+**Default path (without extra config):**
 - `public/model/tfjs_model/model.json`
-- `public/model/tfjs_model/metadata.json` (berisi `labels: string[]`)
+- `public/model/tfjs_model/metadata.json` (containing `labels: string[]`)
 
-**Konfigurasi (untuk model MobileNetV2 hasil transfer learning / fine-tuning):**
-Tambahkan env variable berikut (opsional):
+**Configuration (for MobileNetV2 model from transfer learning / fine-tuning):**
+Add the following env variables (optional):
 
 ```env
-# URL/path TFJS model.json (GraphModel atau LayersModel)
+# URL/path TFJS model.json (GraphModel or LayersModel)
 NEXT_PUBLIC_EMOTION_MODEL_URL=/model/tfjs_model/model.json
 
-# URL/path metadata.json yang berisi labels
+# URL/path metadata.json containing labels
 NEXT_PUBLIC_EMOTION_METADATA_URL=/model/tfjs_model/metadata.json
 
-# Jika metadata.json tidak ada, bisa set labels via env (comma-separated)
+# If metadata.json is missing, can set labels via env (comma-separated)
 NEXT_PUBLIC_EMOTION_LABELS=Negative,Neutral,Positive
 
-# Opsional: override lokasi wasm MediaPipe (jika ingin self-host)
+# Optional: override MediaPipe wasm location (if self-hosting)
 # NEXT_PUBLIC_MEDIAPIPE_WASM_BASE_URL=https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm
 
-# Opsional: override model .task MediaPipe (jika ingin self-host/offline)
+# Optional: override MediaPipe .task model (if self-hosting/offline)
 # NEXT_PUBLIC_MEDIAPIPE_FACE_LANDMARKER_MODEL_URL=/mediapipe/face_landmarker.task
 ```
 
-Catatan:
-- Model akan dicoba load sebagai GraphModel dulu, lalu fallback ke LayersModel.
-- Jika model tidak ditemukan / error saat load atau inferensi, sistem otomatis fallback ke MediaPipe (akurasi lebih rendah, berbasis heuristic blendshapes).
+Notes:
+- Model will try to load as GraphModel first, then fallback to LayersModel.
+- If model is not found / load error, system automatically falls back to MediaPipe (lower accuracy, heuristic blendshapes based).
 
-**Opsi B: Train model sendiri**
-1. Kunjungi [Teachable Machine](https://teachablemachine.withgoogle.com/)
-2. Pilih "Image Project" → "Standard image model"
-3. Buat 5 classes: Happy, Sad, Angry, Anxious, Neutral
-4. Upload gambar wajah untuk setiap emosi (minimal 50 per class)
+**Option B: Train your own model**
+1. Visit [Teachable Machine](https://teachablemachine.withgoogle.com/)
+2. Choose "Image Project" → "Standard image model"
+3. Create 5 classes: Happy, Sad, Angry, Anxious, Neutral
+4. Upload face images for each emotion (at least 50 per class)
 5. Train model
 6. Export → "TensorFlow.js" → "Download"
-7. Extract ke `public/model/` dan pastikan nama file sesuai default (atau gunakan env URL di atas)
+7. Extract to `public/model/` and ensure filenames match default (or use env URL above)
 
 ### 7. Run Development Server
 
@@ -166,21 +166,21 @@ Catatan:
 npm run dev
 ```
 
-Server akan berjalan di [http://localhost:3000](http://localhost:3000)
+Server will run at [http://localhost:3000](http://localhost:3000)
 
 ## Verification Checklist
 
-Setelah setup, cek apakah semua berjalan:
+After setup, check if everything runs:
 
-- [ ] npm install berhasil (536 packages)
-- [ ] `.env` file sudah dibuat dengan 3 variabel
-- [ ] MySQL database `emotion_learning_db` sudah ada
-- [ ] `npm run db:push` sukses (5 tabel terbuat)
-- [ ] `npm run db:seed` sukses (demo data masuk)
-- [ ] Folder `public/model/` ada dan berisi 3 files
-- [ ] `npm run dev` jalan tanpa error
-- [ ] Bisa buka [http://localhost:3000](http://localhost:3000)
-- [ ] Bisa login dengan `student@demo.com` / `password123`
+- [ ] npm install successful (536 packages)
+- [ ] `.env` file created with 3 variables
+- [ ] MySQL database `emotion_learning_db` exists
+- [ ] `npm run db:push` success (5 tables created)
+- [ ] `npm run db:seed` success (demo data inserted)
+- [ ] `public/model/` folder exists and contains 3 files
+- [ ] `npm run dev` runs without error
+- [ ] Can open [http://localhost:3000](http://localhost:3000)
+- [ ] Can login with `student@demo.com` / `password123`
 
 ## Troubleshooting Common Issues
 
@@ -190,42 +190,42 @@ npm run db:generate
 ```
 
 ### Error: "P1001: Can't reach database server"
-- Pastikan MySQL sudah running
-- Cek username/password di `DATABASE_URL`
-- Cek port (default: 3306)
+- Ensure MySQL is running
+- Check username/password in `DATABASE_URL`
+- Check port (default: 3306)
 
 ### Error: "GEMINI_API_KEY is not defined"
-- Cek file `.env` ada di root folder
-- Pastikan variabel ditulis persis: `GEMINI_API_KEY=...`
-- Restart dev server setelah edit `.env`
+- Check `.env` file exists in root folder
+- Ensure variable is written exactly: `GEMINI_API_KEY=...`
+- Restart dev server after editing `.env`
 
-### Error: "MISTRAL_API_KEY is not defined" / fallback tidak jalan
-- Pastikan `MISTRAL_API_KEY` ada di `.env`
-- Restart dev server setelah edit `.env`
+### Error: "MISTRAL_API_KEY is not defined" / fallback not working
+- Ensure `MISTRAL_API_KEY` is in `.env`
+- Restart dev server after editing `.env`
 
 ### Error Windows: `UNKNOWN ... open .next\\static\\chunks\\app\\layout.js`
-Ini biasanya karena file `.next` sedang terkunci / antivirus scan / Node versi terlalu baru.
+This is usually because `.next` file is locked / antivirus scan / Node version too new.
 
-Solusi cepat:
+Quick solution:
 ```bash
 npm run clean
 npm run dev
 ```
 
-Jika masih muncul:
-- Coba `npm run dev:turbo`
-- Gunakan Node **20 LTS** (paling stabil untuk Next.js 14 di Windows)
-- Pindahkan project ke path yang lebih pendek (mis. `D:\Src\ai\project`)
-- Tambahkan folder project ke exclusion antivirus/Defender
+If it still appears:
+- Try `npm run dev:turbo`
+- Use Node **20 LTS** (most stable for Next.js 14 on Windows)
+- Move project to a shorter path (e.g. `D:\Src\ai\project`)
+- Add project folder to antivirus/Defender exclusion
 
-### Camera tidak muncul
+### Camera not appearing
 - Allow browser camera permission
-- Gunakan Chrome/Edge (webcam support lebih baik)
-- Cek folder `public/model/` ada dan lengkap
+- Use Chrome/Edge (better webcam support)
+- Check `public/model/` folder exists and is complete
 
-### Error saat npm install
+### Error during npm install
 ```bash
-# Clear cache dan reinstall
+# Clear cache and reinstall
 rm -rf node_modules package-lock.json
 npm cache clean --force
 npm install
@@ -233,13 +233,13 @@ npm install
 
 ## Next Steps
 
-Setelah setup berhasil:
+After setup is successful:
 
-1. **Login sebagai Student** → Test emotion detection
-2. **Complete onboarding** → Isi questionnaire gaya belajar
-3. **Buka materi** → Lihat adaptive UI berubah sesuai emosi
-4. **Coba quiz** → Chat dengan AI
-5. **Login sebagai Teacher** → Lihat student analytics
+1. **Login as Student** → Test emotion detection
+2. **Complete onboarding** → Fill learning style questionnaire
+3. **Open material** → Watch adaptive UI change with emotion
+4. **Try quiz** → Chat with AI
+5. **Login as Teacher** → View student analytics
 
 ## Development Commands
 
@@ -262,11 +262,11 @@ npm run lint          # Run ESLint
 
 ## Production Deployment
 
-Untuk deploy ke production:
+To deploy to production:
 
-1. **Setup production database** (MySQL di cloud)
-2. **Update `.env` dengan production values**
-3. **Build aplikasi:**
+1. **Setup production database** (MySQL in cloud)
+2. **Update `.env` with production values**
+3. **Build application:**
    ```bash
    npm run build
    ```
@@ -275,20 +275,20 @@ Untuk deploy ke production:
    npm start
    ```
 
-**Rekomendasi hosting:**
-- Frontend: Vercel (optimized untuk Next.js)
-- Database: PlanetScale, Railway, atau AWS RDS
-- Alternative: Deploy all-in-one di VPS (DigitalOcean, Linode)
+**Hosting recommendations:**
+- Frontend: Vercel (optimized for Next.js)
+- Database: PlanetScale, Railway, or AWS RDS
+- Alternative: Deploy all-in-one on VPS (DigitalOcean, Linode)
 
 ## Need Help?
 
-Jika mengalami masalah saat setup:
+If experiencing issues during setup:
 
-1. Cek error message di terminal
-2. Cek console browser (F12)
-3. Lihat troubleshooting di atas
-4. Cek dokumentasi di `README.md`
-5. Review file `IMPLEMENTATION_SUMMARY.md` untuk architecture
+1. Check error message in terminal
+2. Check browser console (F12)
+3. See troubleshooting above
+4. Check documentation in `README.md`
+5. Review `IMPLEMENTATION_SUMMARY.md` for architecture
 
 ---
 

@@ -73,7 +73,7 @@ export default function LoginClient() {
           throw new Error('Session cookie not stored by browser');
         }
       } catch {
-        setError('Login berhasil, tapi sesi tidak tersimpan (cookie diblokir). Coba akses via http://localhost:3000 atau jalankan lewat HTTPS untuk production.');
+        setError('Login successful, but session not saved (cookies blocked). Try accessing via http://localhost:3000 or use HTTPS for production.');
         return;
       }
 
@@ -114,7 +114,7 @@ export default function LoginClient() {
             <Brain className="w-10 h-10 text-blue-600" />
             <span className="text-3xl font-bold text-gray-900">EmotionLearn</span>
           </Link>
-          <p className="text-gray-600">Masuk ke akun Anda</p>
+          <p className="text-gray-600">Sign in to your account</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg p-8">
@@ -194,9 +194,9 @@ export default function LoginClient() {
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-600">
-            Belum punya akun?{' '}
+            Don't have an account?{' '}
             <Link href="/auth/register" className="text-blue-600 hover:text-blue-700 font-medium">
-              Daftar di sini
+              Register here
             </Link>
           </div>
         </div>

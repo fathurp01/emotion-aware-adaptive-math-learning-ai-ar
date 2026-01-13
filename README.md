@@ -40,7 +40,7 @@ An intelligent learning platform that adapts to students' emotional states in re
    - Take AI-generated quizzes
    - Track emotional journey
 
-2. **Teachers (Guru)**
+2. **Teachers**
    - Create/manage content (CMS)
    - Monitor student anxiety patterns
    - View class performance analytics
@@ -51,7 +51,7 @@ An intelligent learning platform that adapts to students' emotional states in re
 
 - Node.js **18+** (recommended: **Node 20 LTS** for Windows + Next.js 14 stability)
 - MySQL **8.0+**
-- AI API Key (minimal salah satu):
+- AI API Key (at least one):
   - Gemini: https://ai.google.dev
   - Mistral: https://console.mistral.ai
 
@@ -264,24 +264,24 @@ const quiz = await generateQuiz(
 
 This section maps the system to the UAS requirements (1)–(5).
 
-1) Siswa melihat materi (content adaptive)
+1) Student views material (content adaptive)
 - Implemented in the Student Learn page: `/student/learn/[materialId]`.
 - Content-adaptive is implemented via **personalized remedial content per user+material**, generated and persisted based on feedback.
 
-2) Mencari feedback (emosi atau tingkat pemahaman)
+2) Seek feedback (emotion or understanding level)
 - Emotion feedback: webcam + TFJS model logs via `/api/student/log-emotion`.
 - Understanding feedback: quiz + scoring via `/student/quiz/[materialId]` and `/api/quiz/*`.
 
-3) Identifikasi/klasifikasi feedback
+3) Identification/classification of feedback
 - Emotion label normalized to `Negative|Neutral|Positive`.
 - Quiz performance graded (recap + calc) and logged to DB.
 - Expert System (Fuzzy Logic) classifies inputs into UI adaptations and difficulty adjustments.
 
-4) Update materi berdasarkan feedback menggunakan AI
+4) Update material based on feedback using AI
 - Implemented as **AI-generated personalized remedial content**, persisted per user+material and shown on the learn page.
 - The material update is not destructive to the base material (safer for multi-user), but provides a personalized updated version for each student.
 
-5) Ulang (1)–(4) sampai paham
+5) Repeat (1)–(4) until understood
 - Quiz uses mastery stop-condition (e.g., correct streak) with a max cap.
 - When a student struggles, the system auto-generates/upserts remedial material for the next learning loop.
 
@@ -323,7 +323,7 @@ As Student:
 1. Login (demo user) → complete onboarding.
 2. Open a material → allow camera → observe emotion indicator.
 3. Take quiz → answer wrong a few times → system logs quiz + generates remedial.
-4. Back to learn page → see “Materi Remedial (Personal)” updated.
+4. Back to learn page → see “Remedial Material (Personal)” updated.
 5. Retake quiz → reach mastery (finish reason shown).
 
 As Teacher:
@@ -481,8 +481,8 @@ This project is for academic purposes. Please cite if used in research.
 ## 👨‍💻 Author
 
 **Final Year Thesis Project**
-- Platform Pembelajaran Matematika Berbasis AI & AR
-- Dengan Pengenalan Emosi Berbasis Expert System
+- AI & AR Based Math Learning Platform
+- With Expert System Based Emotion Recognition
 
 ## 🙏 Acknowledgments
 

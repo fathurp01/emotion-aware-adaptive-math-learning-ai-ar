@@ -17,17 +17,17 @@ export async function POST(request: NextRequest) {
     const { title, content } = schema.parse(body);
 
     const prompt = [
-      'Kamu adalah editor materi matematika SMP.',
-      'Tugas: rapikan dan susun ulang materi berikut agar jelas untuk siswa.',
-      'Aturan:',
-      '- Bahasa Indonesia, tidak menambah fakta/konsep baru.',
-      '- Hasil dalam format markdown sederhana (judul, subjudul, langkah, contoh, latihan).',
-      '- Jangan membuat halusinasi; jika ada bagian kurang jelas, tulis catatan singkat "(Perlu konfirmasi guru)".',
-      '- Output hanya markdown, tanpa JSON.',
+      'You are a middle school math material editor.',
+      'Task: tidy up and restructure the following material to be clear for students.',
+      'Rules:',
+      '- English, do not add new facts/concepts.',
+      '- Result in simple markdown format (title, subtitles, steps, example, exercises).',
+      '- Do not hallucinate; if something is unclear, write a short note "(Needs teacher confirmation)".',
+      '- Output only markdown, no JSON.',
       '',
-      `JUDUL: ${title}`,
+      `TITLE: ${title}`,
       '',
-      'MATERI ASLI:',
+      'ORIGINAL MATERIAL:',
       stripUnsafe(content).slice(0, 9000),
     ].join('\n');
 
