@@ -49,78 +49,80 @@ An intelligent learning platform that adapts to students' emotional states in re
 
 ### Prerequisites
 
-- Node.js 18+ 
-- MySQL 8.0+
-- AI API Key: Gemini **or** Mistral
-  - Gemini key: https://ai.google.dev
-  - Mistral key: https://console.mistral.ai
-- Trained Teachable Machine Model ([Train here](https://teachablemachine.withgoogle.com/))
+- Node.js **18+** (recommended: **Node 20 LTS** for Windows + Next.js 14 stability)
+- MySQL **8.0+**
+- AI API Key (minimal salah satu):
+  - Gemini: https://ai.google.dev
+  - Mistral: https://console.mistral.ai
 
-### Installation
+### Quick Setup (Local)
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd Platform-Pembelajaran-Matematika-Berbasis-AI-AR-Dengan-Pengenalan-Emosi-Berbasis-Expert-System
-   ```
+1) Install dependencies
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+```
 
-3. **Setup environment variables**
-  Copy from the template:
-  ```bash
-  # Windows PowerShell
-  Copy-Item .env.example .env
-  ```
-   
-   Edit `.env` and add:
-   ```env
-   DATABASE_URL="mysql://user:password@localhost:3306/emotion_learning_db"
-  # Provide at least ONE provider
-  GEMINI_API_KEY="your_gemini_api_key"
-  # or
-  MISTRAL_API_KEY="your_mistral_api_key"
-   NEXTAUTH_SECRET="generate_random_secret"
-   ```
+2) Configure environment
 
-  Notes:
-  - If Gemini is missing or rate-limited, the app automatically falls back to Mistral when `MISTRAL_API_KEY` is set.
-  - `npm run health-check` verifies both providers (when configured).
+```bash
+# Windows PowerShell
+Copy-Item .env.example .env
+```
 
-4. **Setup database**
-   ```bash
-   # Generate Prisma Client
-   npm run db:generate
+Edit `.env`:
 
-   # Push schema to database
-   npm run db:push
+```env
+DATABASE_URL="mysql://root:password@localhost:3306/emotion_learning_db"
 
-   # (Optional) Seed with sample data
-   npm run db:seed
-   ```
+# Provide at least ONE provider
+GEMINI_API_KEY="your_key_from_ai.google.dev"
+# or
+MISTRAL_API_KEY="your_key_from_console.mistral.ai"
 
-5. **Add Emotion Detection Model**
-   - Train your model at [Teachable Machine](https://teachablemachine.withgoogle.com/)
-   - Export as TensorFlow.js
-   - Place `model.json` and `metadata.json` in `/public/model/`
+NEXTAUTH_SECRET="random_string_min_32_chars"
 
-6. **Run development server**
-   ```bash
-   npm run dev
-   ```
-   
-   The system will perform automatic startup checks including:
-   - ✅ Database connection verification
-   - ✅ AI model availability check
-   - ✅ Environment configuration validation
-   - ✅ TensorFlow.js initialization
-   
-   See detailed logs in your terminal. For more info, check [STARTUP_LOGGING.md](STARTUP_LOGGING.md)
-   
-   Open [http://localhost:3000](http://localhost:3000)
+# Recommended (new auth cookie signing secret)
+AUTH_SECRET="random_string_min_32_chars"
+```
+
+Notes:
+- If Gemini is missing/rate-limited, the app falls back to Mistral when `MISTRAL_API_KEY` is set.
+- Generate a secret quickly:
+  - `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+
+3) Setup database schema + seed
+
+```bash
+npm run db:generate
+npm run db:push
+npm run db:seed
+```
+
+4) Add emotion model files
+
+This project expects TFJS model assets under:
+
+- `public/model/tfjs_model/model.json`
+- `public/model/tfjs_model/metadata.json`
+- `public/model/tfjs_model/*.bin` (shards)
+
+If the TFJS model fails to load, the app can fallback to MediaPipe-based heuristic emotion signals (lower accuracy).
+
+5) Run the dev server
+
+```bash
+npm run dev
+```
+
+Open http://localhost:3000
+
+Windows tip:
+- If you hit `.next` file lock errors, run:
+  - `npm run clean`
+  - then `npm run dev` (or `npm run dev:turbo`)
+
+For full setup details, see [SETUP.md](SETUP.md).
 
 ## 🧾 Material Pre-generation (Global)
 
@@ -133,11 +135,11 @@ This project can refine material content once and persist it to the DB so all us
   - `MATERIAL_PRECOMPUTE_FORCE=1` (optional)
   - `MATERIAL_REFINE_MAX_OUTPUT_TOKENS=1536` (longer output)
 
-7. **Manual Health Check (Optional)**
-   ```bash
-   # Run system health check anytime
-   npm run health-check
-   ```
+### Manual Health Check (Optional)
+
+```bash
+npm run health-check
+```
 
 ## 📁 Project Structure
 
@@ -257,6 +259,82 @@ const quiz = await generateQuiz(
 3. **Adaptive Learning** → Camera activates → Emotion detected → UI adapts
 4. **Take Quiz** → AI generates personalized questions → Submit answers → Get feedback
 5. **View Progress** → Dashboard shows emotion history & performance
+
+## ✅ UAS 5-Step Requirement Mapping (SC-5/SC-6)
+
+This section maps the system to the UAS requirements (1)–(5).
+
+1) Siswa melihat materi (content adaptive)
+- Implemented in the Student Learn page: `/student/learn/[materialId]`.
+- Content-adaptive is implemented via **personalized remedial content per user+material**, generated and persisted based on feedback.
+
+2) Mencari feedback (emosi atau tingkat pemahaman)
+- Emotion feedback: webcam + TFJS model logs via `/api/student/log-emotion`.
+- Understanding feedback: quiz + scoring via `/student/quiz/[materialId]` and `/api/quiz/*`.
+
+3) Identifikasi/klasifikasi feedback
+- Emotion label normalized to `Negative|Neutral|Positive`.
+- Quiz performance graded (recap + calc) and logged to DB.
+- Expert System (Fuzzy Logic) classifies inputs into UI adaptations and difficulty adjustments.
+
+4) Update materi berdasarkan feedback menggunakan AI
+- Implemented as **AI-generated personalized remedial content**, persisted per user+material and shown on the learn page.
+- The material update is not destructive to the base material (safer for multi-user), but provides a personalized updated version for each student.
+
+5) Ulang (1)–(4) sampai paham
+- Quiz uses mastery stop-condition (e.g., correct streak) with a max cap.
+- When a student struggles, the system auto-generates/upserts remedial material for the next learning loop.
+
+Minimal interface requirement: this project runs in VS Code (local) and can also be demonstrated via browser.
+
+## 🧪 Validation (Build + Feature Checks)
+
+### 1) Build & Lint
+
+```bash
+npm run build
+npm run lint
+```
+
+### 2) Health Check
+
+```bash
+npm run health-check
+```
+
+Also verify:
+- `GET /api/health` returns `healthy` or `degraded`.
+
+### 3) DB Validation
+
+Run:
+
+```bash
+npm run db:generate
+npm run db:push
+```
+
+Confirm tables exist (at minimum):
+- `User`, `Material`, `QuizLog`, `EmotionLog`, `RemedialMaterial`
+
+### 4) Demo Validation Script (UAS)
+
+As Student:
+1. Login (demo user) → complete onboarding.
+2. Open a material → allow camera → observe emotion indicator.
+3. Take quiz → answer wrong a few times → system logs quiz + generates remedial.
+4. Back to learn page → see “Materi Remedial (Personal)” updated.
+5. Retake quiz → reach mastery (finish reason shown).
+
+As Teacher:
+1. Login teacher → dashboard → observe student anxiety pattern summaries.
+
+## 📖 Additional Docs
+
+- Setup: [SETUP.md](SETUP.md)
+- Quick start: [QUICKSTART.md](QUICKSTART.md)
+- Deployment: [DEPLOYMENT.md](DEPLOYMENT.md)
+- Logging/health: [LOGGING.md](LOGGING.md)
 
 ### Adaptive UI Logic
 

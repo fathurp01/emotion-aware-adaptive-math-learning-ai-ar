@@ -7,9 +7,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Home, BookOpen, MessageSquare, User, LogOut, Heart } from 'lucide-react';
-import { useEmotionStore } from '@/lib/store';
+import { useEmotionStore, useLogout } from '@/lib/store';
 
 interface StudentSidebarProps {
   onLogout?: () => void;
@@ -17,7 +17,22 @@ interface StudentSidebarProps {
 
 export default function StudentSidebar({ onLogout }: StudentSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { currentEmotion } = useEmotionStore();
+  const logout = useLogout();
+
+  const handleLogout = () => {
+    if (onLogout) return onLogout();
+    void (async () => {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      } catch {
+        // ignore
+      }
+      logout();
+      router.replace('/auth/login');
+    })();
+  };
 
   const links = [
     { href: '/student/dashboard', icon: Home, label: 'Dashboard' },
@@ -79,7 +94,7 @@ export default function StudentSidebar({ onLogout }: StudentSidebarProps) {
       {/* Logout Button */}
       <div className="p-4 border-t">
         <button
-          onClick={onLogout}
+          onClick={handleLogout}
           className="flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors w-full"
         >
           <LogOut className="w-5 h-5" />

@@ -9,15 +9,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { prisma } from '@/lib/db';
+import { getAuthCookieName, signAuthToken } from '@/lib/auth';
 
 // Validation schema
 const loginSchema = z.object({
   email: z.string().email('Invalid email'),
   password: z.string().min(1, 'Password required'),
+  rememberMe: z.boolean().optional(),
 });
 
 export async function POST(request: NextRequest) {
   try {
+    const host = request.headers.get('host') || '';
+    const isLocalhost = host.startsWith('localhost') || host.startsWith('127.0.0.1') || host.startsWith('[::1]');
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    const isHttps = (forwardedProto ? forwardedProto === 'https' : request.nextUrl.protocol === 'https:') && !isLocalhost;
+
     const body = await request.json();
     const validatedData = loginSchema.parse(body);
 
@@ -57,11 +64,37 @@ export async function POST(request: NextRequest) {
     // Return user data (exclude password)
     const { password: _password, ...userWithoutPassword } = user;
 
-    return NextResponse.json({
+    const rememberMe = validatedData.rememberMe === true;
+    const expiresIn = rememberMe ? '7d' : '1d';
+    const cookieMaxAge = rememberMe ? 60 * 60 * 24 * 7 : 60 * 60 * 24;
+
+    const token = await signAuthToken(
+      {
+      sub: userWithoutPassword.id,
+      role: userWithoutPassword.role,
+      learningStyle: userWithoutPassword.learningStyle ?? undefined,
+      },
+      expiresIn
+    );
+
+    const res = NextResponse.json({
       success: true,
       user: userWithoutPassword,
       message: 'Login successful',
     });
+
+    res.cookies.set({
+      name: getAuthCookieName(),
+      value: token,
+      httpOnly: true,
+      sameSite: 'lax',
+      // IMPORTANT: secure cookies are rejected on plain http. Allow localhost for local prod (`next start`).
+      secure: isHttps,
+      path: '/',
+      maxAge: cookieMaxAge,
+    });
+
+    return res;
   } catch (error) {
     console.error('Login error:', error);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Webcam from 'react-webcam';
 
 type ArRecipe = {
@@ -56,6 +56,10 @@ export default function KinestheticARPanel({
   const [recipe, setRecipe] = useState<ArRecipe | null>(null);
   const [isLoadingRecipe, setIsLoadingRecipe] = useState(false);
 
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState<string>('');
+  const [deviceInitError, setDeviceInitError] = useState<string | null>(null);
+
   const fallbackSteps = useMemo(() => buildSimpleStepsFromText(materialText, 5), [materialText]);
 
   const steps = recipe?.steps?.length ? recipe.steps : fallbackSteps;
@@ -74,6 +78,82 @@ export default function KinestheticARPanel({
       setIsLoadingRecipe(false);
     }
   };
+
+  const refreshVideoDevices = useCallback(async () => {
+    setDeviceInitError(null);
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+      setDeviceInitError('Browser tidak mendukung akses kamera (mediaDevices).');
+      return;
+    }
+
+    try {
+      // Trigger permission prompt so device labels are visible.
+      const tmpStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      tmpStream.getTracks().forEach((t) => t.stop());
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videos = devices.filter((d) => d.kind === 'videoinput');
+      setVideoDevices(videos);
+
+      const saved = (() => {
+        try {
+          return window.localStorage.getItem('preferred-video-device-id') || '';
+        } catch {
+          return '';
+        }
+      })();
+
+      const hasSaved = saved && videos.some((d) => d.deviceId === saved);
+      if (hasSaved) {
+        setSelectedVideoDeviceId(saved);
+        return;
+      }
+
+      // Heuristic: prefer DroidCam / non-PhoneLink cameras when available.
+      const pickByLabel = (re: RegExp) => videos.find((d) => re.test((d.label || '').toLowerCase()));
+      const droid = pickByLabel(/droid\s*cam|droidcam/);
+      const integrated = pickByLabel(/integrated|built-in|builtin/);
+      const usb = pickByLabel(/usb/);
+      const notPhoneLink = videos.find((d) => !/phone\s*link|your\s*phone/.test((d.label || '').toLowerCase()));
+
+      const picked = droid || integrated || usb || notPhoneLink || videos[0];
+      setSelectedVideoDeviceId(picked?.deviceId || '');
+    } catch (e) {
+      setDeviceInitError(
+        e instanceof Error
+          ? e.message
+          : 'Gagal mengakses kamera. Pastikan izin kamera diizinkan untuk situs ini.'
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!active) return;
+    void refreshVideoDevices();
+  }, [active, refreshVideoDevices]);
+
+  useEffect(() => {
+    if (!selectedVideoDeviceId) return;
+    try {
+      window.localStorage.setItem('preferred-video-device-id', selectedVideoDeviceId);
+    } catch {
+      // ignore
+    }
+  }, [selectedVideoDeviceId]);
+
+  const videoConstraints = useMemo(() => {
+    if (selectedVideoDeviceId) {
+      return {
+        deviceId: { exact: selectedVideoDeviceId },
+      } as MediaTrackConstraints;
+    }
+
+    // Mobile-friendly default
+    return {
+      facingMode: { ideal: 'environment' },
+    } as MediaTrackConstraints;
+  }, [selectedVideoDeviceId]);
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6 border">
@@ -113,13 +193,44 @@ export default function KinestheticARPanel({
               ) : null}
             </div>
           )}
+
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <label className="text-xs font-medium text-gray-700">Pilih kamera:</label>
+            <select
+              value={selectedVideoDeviceId}
+              onChange={(e) => setSelectedVideoDeviceId(e.target.value)}
+              className="text-xs border rounded-md px-2 py-1 bg-white"
+            >
+              {videoDevices.length === 0 ? (
+                <option value="">(memuat daftar kamera…)</option>
+              ) : (
+                videoDevices.map((d, idx) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label || `Camera ${idx + 1}`}
+                  </option>
+                ))
+              )}
+            </select>
+            <button
+              type="button"
+              onClick={() => void refreshVideoDevices()}
+              className="text-xs px-2 py-1 rounded-md border bg-white hover:bg-gray-50"
+            >
+              Refresh
+            </button>
+            {deviceInitError ? (
+              <span className="text-xs text-red-600">{deviceInitError}</span>
+            ) : null}
+          </div>
+
           <div className="relative w-full aspect-video overflow-hidden rounded-lg border bg-black">
             <Webcam
+              key={selectedVideoDeviceId || 'default'}
               audio={false}
               mirrored={true}
               className="absolute inset-0 w-full h-full object-cover"
               videoConstraints={{
-                facingMode: 'environment',
+                ...videoConstraints,
               }}
             />
 

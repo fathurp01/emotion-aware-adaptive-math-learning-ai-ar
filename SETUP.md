@@ -51,7 +51,10 @@ Buat file `.env` di root folder:
 DATABASE_URL="mysql://root:your_password@localhost:3306/emotion_learning_db"
 GEMINI_API_KEY="your_gemini_api_key_here"
 MISTRAL_API_KEY="your_mistral_api_key_here"
-NEXTAUTH_SECRET="random_secret_key_min_32_characters"
+
+# Authentication secret (required for production builds)
+# Use AUTH_SECRET (recommended). JWT_SECRET/NEXTAUTH_SECRET are accepted as fallback.
+AUTH_SECRET="random_secret_key_min_32_characters"
 ```
 
 Catatan:
@@ -65,7 +68,7 @@ Catatan:
 4. Generate API key (gratis)
 5. Copy ke `.env` file
 
-**Generate NEXTAUTH_SECRET:**
+**Generate AUTH_SECRET (recommended):**
 ```bash
 # Di terminal/PowerShell:
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"

@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useCurrentEmotion, useHasHydrated, useUser } from '@/lib/store';
+import { useAuthChecked, useCurrentEmotion, useHasHydrated, useUser } from '@/lib/store';
 import { Send, Loader2, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -39,6 +39,7 @@ export default function QuizPage() {
   const params = useParams();
   const user = useUser();
   const hasHydrated = useHasHydrated();
+  const authChecked = useAuthChecked();
   const currentEmotion = useCurrentEmotion();
   const materialId = params.materialId as string;
 
@@ -78,13 +79,14 @@ export default function QuizPage() {
 
   useEffect(() => {
     if (!hasHydrated) return;
+    if (!authChecked) return;
     if (!user) {
       router.push('/auth/login');
       return;
     }
 
     fetchMaterial();
-  }, [hasHydrated, user, router, fetchMaterial]);
+  }, [hasHydrated, authChecked, user, router, fetchMaterial]);
 
   useEffect(() => {
     async function fetchLastEmotion() {

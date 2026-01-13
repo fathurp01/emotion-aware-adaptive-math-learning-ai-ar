@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useHasHydrated, useUser } from '@/lib/store';
+import { useAuthChecked, useHasHydrated, useLogout, useUser } from '@/lib/store';
 import { Users, AlertTriangle, BookOpen, Plus, LogOut } from 'lucide-react';
 import Link from 'next/link';
 
@@ -29,12 +29,15 @@ export default function TeacherDashboard() {
   const router = useRouter();
   const user = useUser();
   const hasHydrated = useHasHydrated();
+  const authChecked = useAuthChecked();
+  const logout = useLogout();
 
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!hasHydrated) return;
+    if (!authChecked) return;
     if (!user) {
       router.push('/auth/login');
       return;
@@ -46,7 +49,7 @@ export default function TeacherDashboard() {
     }
 
     fetchStudents();
-  }, [hasHydrated, user, router]);
+  }, [hasHydrated, authChecked, user, router]);
 
   const fetchStudents = async () => {
     try {
@@ -63,8 +66,15 @@ export default function TeacherDashboard() {
   };
 
   const handleLogout = () => {
-    // In a real app, you'd clear the auth state properly
-    router.push('/auth/login');
+    void (async () => {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      } catch {
+        // ignore
+      }
+      logout();
+      router.replace('/auth/login');
+    })();
   };
 
   if (isLoading) {

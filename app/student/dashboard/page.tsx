@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useHasHydrated, useUser } from '@/lib/store';
+import { useAuthChecked, useHasHydrated, useLogout, useUser } from '@/lib/store';
 import { BookOpen, Brain, Heart, ArrowRight, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -31,6 +31,8 @@ export default function StudentDashboard() {
   const router = useRouter();
   const user = useUser();
   const hasHydrated = useHasHydrated();
+  const authChecked = useAuthChecked();
+  const logout = useLogout();
 
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [emotionStats, setEmotionStats] = useState<EmotionStats>({});
@@ -62,13 +64,14 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (!hasHydrated) return;
+    if (!authChecked) return;
     if (!user) {
       router.push('/auth/login');
       return;
     }
 
     fetchData();
-  }, [hasHydrated, user, router, fetchData]);
+  }, [hasHydrated, authChecked, user, router, fetchData]);
 
   if (isLoading) {
     return (
@@ -93,12 +96,21 @@ export default function StudentDashboard() {
               </h1>
               <p className="text-gray-600">Gaya belajar: <span className="font-medium text-blue-600">{user?.learningStyle || 'Belum ditentukan'}</span></p>
             </div>
-            <Link
-              href="/auth/login"
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+                } catch {
+                  // ignore
+                }
+                logout();
+                router.replace('/auth/login');
+              }}
               className="text-gray-600 hover:text-gray-900"
             >
               Logout
-            </Link>
+            </button>
           </div>
         </div>
       </header>

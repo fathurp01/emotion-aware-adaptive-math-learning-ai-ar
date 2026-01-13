@@ -55,6 +55,9 @@ interface EmotionStore {
 
   // Hydration State
   hasHydrated: boolean;
+
+  // Auth bootstrap state
+  authChecked: boolean;
   
   // Actions - Emotion
   setEmotion: (emotion: EmotionData) => void;
@@ -66,9 +69,13 @@ interface EmotionStore {
   
   // Actions - User
   setUser: (user: User | null) => void;
+  logout: () => void;
 
   // Actions - Hydration
   setHasHydrated: (hasHydrated: boolean) => void;
+
+  // Actions - Auth
+  setAuthChecked: (checked: boolean) => void;
   
   // Utility
   getEmotionTrend: () => EmotionLabel | null; // Get most frequent emotion in history
@@ -89,6 +96,7 @@ export const useEmotionStore = create<EmotionStore>()(
         isModelLoaded: false,
         user: null,
         hasHydrated: false,
+        authChecked: false,
 
         // Set new emotion and update history
         setEmotion: (emotion: EmotionData) =>
@@ -128,9 +136,34 @@ export const useEmotionStore = create<EmotionStore>()(
             user,
           }),
 
+        logout: () => {
+          // Reset in-memory state
+          set({
+            user: null,
+            currentEmotion: null,
+            emotionHistory: [],
+            isCamActive: false,
+            isModelLoaded: false,
+          });
+
+          // Ensure persisted auth is cleared (prevents immediate re-login on refresh)
+          try {
+            if (typeof window !== 'undefined') {
+              window.localStorage.removeItem('emotion-store');
+            }
+          } catch {
+            // ignore
+          }
+        },
+
         setHasHydrated: (hasHydrated: boolean) =>
           set({
             hasHydrated,
+          }),
+
+        setAuthChecked: (checked: boolean) =>
+          set({
+            authChecked: checked,
           }),
 
         // Get emotion trend from history (most frequent emotion)
@@ -203,8 +236,14 @@ export const useCameraActive = () =>
 // Hook to get user data
 export const useUser = () => useEmotionStore((state) => state.user);
 
+// Hook to logout (clears persisted user)
+export const useLogout = () => useEmotionStore((state) => state.logout);
+
 // Hook to check when persisted state has loaded
 export const useHasHydrated = () => useEmotionStore((state) => state.hasHydrated);
+
+// Hook to check whether auth session has been validated from server
+export const useAuthChecked = () => useEmotionStore((state) => state.authChecked);
 
 // Hook to check if student is experiencing anxiety (for adaptive UI)
 export const useIsAnxious = () =>

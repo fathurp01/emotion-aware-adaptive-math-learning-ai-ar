@@ -7,8 +7,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Home, Users, BookOpen, BarChart3, Plus, LogOut } from 'lucide-react';
+import { useLogout } from '@/lib/store';
 
 interface TeacherSidebarProps {
   onLogout?: () => void;
@@ -16,6 +17,21 @@ interface TeacherSidebarProps {
 
 export default function TeacherSidebar({ onLogout }: TeacherSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const logout = useLogout();
+
+  const handleLogout = () => {
+    if (onLogout) return onLogout();
+    void (async () => {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      } catch {
+        // ignore
+      }
+      logout();
+      router.replace('/auth/login');
+    })();
+  };
 
   const links = [
     { href: '/teacher/dashboard', icon: Home, label: 'Dashboard' },
@@ -72,7 +88,7 @@ export default function TeacherSidebar({ onLogout }: TeacherSidebarProps) {
       {/* Logout Button */}
       <div className="p-4 border-t">
         <button
-          onClick={onLogout}
+          onClick={handleLogout}
           className="flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors w-full"
         >
           <LogOut className="w-5 h-5" />

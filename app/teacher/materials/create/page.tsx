@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useHasHydrated, useUser } from '@/lib/store';
+import { useAuthChecked, useHasHydrated, useUser } from '@/lib/store';
 import { ArrowLeft, Upload, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -22,6 +22,7 @@ export default function CreateMaterialPage() {
   const router = useRouter();
   const user = useUser();
   const hasHydrated = useHasHydrated();
+  const authChecked = useAuthChecked();
 
   const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
 
@@ -40,6 +41,7 @@ export default function CreateMaterialPage() {
 
   useEffect(() => {
     if (!hasHydrated) return;
+    if (!authChecked) return;
     if (!user) {
       router.push('/auth/login');
       return;
@@ -64,7 +66,7 @@ export default function CreateMaterialPage() {
         console.error('Error fetching chapters:', error);
       }
     })();
-  }, [hasHydrated, user, router]);
+  }, [hasHydrated, authChecked, user, router]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

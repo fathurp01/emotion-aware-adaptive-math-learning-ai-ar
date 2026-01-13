@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { getLearningStyle, validateAnswers } from '@/utils/learningStyleAlgo';
 import type { QuestionnaireAnswers } from '@/utils/learningStyleAlgo';
+import { getAuthCookieName, signAuthToken } from '@/lib/auth';
 
 // ====================================
 // VALIDATION SCHEMA
@@ -35,6 +36,11 @@ const onboardingSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const host = request.headers.get('host') || '';
+    const isLocalhost = host.startsWith('localhost') || host.startsWith('127.0.0.1') || host.startsWith('[::1]');
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    const isHttps = (forwardedProto ? forwardedProto === 'https' : request.nextUrl.protocol === 'https:') && !isLocalhost;
+
     const body = await request.json();
     const validatedData = onboardingSchema.parse(body);
 
@@ -70,11 +76,18 @@ export async function POST(request: NextRequest) {
         id: true,
         name: true,
         email: true,
+        role: true,
         learningStyle: true,
       },
     });
 
-    return NextResponse.json({
+    const token = await signAuthToken({
+      sub: updatedUser.id,
+      role: updatedUser.role,
+      learningStyle: updatedUser.learningStyle ?? undefined,
+    });
+
+    const res = NextResponse.json({
       success: true,
       data: {
         user: updatedUser,
@@ -82,6 +95,18 @@ export async function POST(request: NextRequest) {
       },
       message: 'Onboarding completed successfully',
     });
+
+    res.cookies.set({
+      name: getAuthCookieName(),
+      value: token,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isHttps,
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    return res;
   } catch (error) {
     console.error('Error processing onboarding:', error);
 

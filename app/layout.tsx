@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Toaster } from 'sonner';
+import AuthBootstrap from '@/components/auth/AuthBootstrap';
 import 'katex/dist/katex.min.css';
 import './globals.css';
 
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <AuthBootstrap />
         {children}
         <Toaster 
           position="top-right" 
