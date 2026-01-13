@@ -6,6 +6,7 @@
   "scripts": {
     "clean": "node scripts/clean.js",
     "dev": "node scripts/run-dev.js",
+    "dev:lan": "node scripts/run-dev.js --host 0.0.0.0 --port 3000",
     "dev:clean": "npm run clean && next dev",
     "dev:turbo": "next dev --turbo",
     "build": "next build",
@@ -38,6 +39,7 @@
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "sonner": "^1.7.1",
+    "three": "^0.182.0",
     "zod": "^3.23.8",
     "zustand": "^5.0.2"
   },
@@ -48,6 +50,8 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/react-webcam": "^1.1.0",
+    "@types/three": "^0.182.0",
+    "@types/webxr": "^0.5.24",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.18",

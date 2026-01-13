@@ -3,11 +3,13 @@ import { prisma } from '@/lib/db';
 import { computeContentVersion, generateArRecipe } from '@/lib/materialEnhancements';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const materialId = params.id;
+    const force = request.nextUrl.searchParams.get('force');
+    const shouldForce = force === '1' || force?.toLowerCase() === 'true';
 
     const material = await prisma.material.findUnique({
       where: { id: materialId },
@@ -27,7 +29,7 @@ export async function GET(
 
     const currentVersion = material.contentVersion || computeContentVersion(material.content);
 
-    if (material.arRecipe && material.arRecipeVer === currentVersion) {
+    if (!shouldForce && material.arRecipe && material.arRecipeVer === currentVersion) {
       return NextResponse.json({
         materialId: material.id,
         version: currentVersion,
@@ -51,7 +53,7 @@ export async function GET(
     return NextResponse.json({
       materialId: material.id,
       version: currentVersion,
-      source: 'generated',
+      source: shouldForce ? 'forced' : 'generated',
       arRecipe,
     });
   } catch (error) {

@@ -29,7 +29,34 @@ try {
 const args = ['dev'];
 if (useTurbo) args.push('--turbo');
 
-console.log(`[dev] Starting Next.js (${useTurbo ? 'turbo' : 'webpack'}) on Node ${process.versions.node}`);
+// Allow binding dev server to LAN for testing on phone.
+// Usage: node scripts/run-dev.js --host 0.0.0.0 --port 3000
+function readArgValue(flag) {
+  const idx = process.argv.indexOf(flag);
+  if (idx >= 0 && process.argv[idx + 1]) return process.argv[idx + 1];
+  return undefined;
+}
+
+const host =
+  readArgValue('--host') ||
+  readArgValue('--hostname') ||
+  process.env.DEV_HOST ||
+  process.env.NEXT_DEV_HOST ||
+  process.env.NEXT_HOSTNAME;
+
+const port =
+  readArgValue('--port') ||
+  process.env.PORT ||
+  process.env.NEXT_DEV_PORT;
+
+if (host) args.push('--hostname', String(host));
+if (port) args.push('--port', String(port));
+
+console.log(
+  `[dev] Starting Next.js (${useTurbo ? 'turbo' : 'webpack'}) on Node ${process.versions.node}` +
+    (host ? ` (host=${host})` : '') +
+    (port ? ` (port=${port})` : '')
+);
 
 let child;
 child = spawn(process.execPath, [nextCli, ...args], {

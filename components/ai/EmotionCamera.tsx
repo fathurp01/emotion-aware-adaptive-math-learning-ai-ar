@@ -569,8 +569,16 @@ export default function EmotionCamera({
     const videoInputs = devices.filter((d) => d.kind === 'videoinput');
     if (videoInputs.length === 0) return null;
 
+    // On many mobile browsers, labels remain empty or unstable; do not force a deviceId.
+    // We rely on facingMode: 'user' for EmotionCamera so it uses the front camera.
+    if (videoInputs.every((d) => !d.label)) return null;
+
     const preferRe = /(integrated|built-?in|internal)/i;
     const avoidRe = /(phone|continuity|droidcam|ivcam|epoccam|virtual|obs|snap|link)/i;
+
+    const frontRe = /(front|user)/i;
+    const front = videoInputs.find((d) => frontRe.test(d.label) && !avoidRe.test(d.label));
+    if (front) return front;
 
     const preferred = videoInputs.find((d) => preferRe.test(d.label) && !avoidRe.test(d.label));
     if (preferred) return preferred;
@@ -797,7 +805,13 @@ export default function EmotionCamera({
             key={selectedVideoDeviceId || 'default-camera'}
             onUserMediaError={(err) => {
               console.error('Webcam permission / device error:', err);
-              setError('Failed to access camera. Please check browser permission and camera device.');
+              const msg =
+                typeof window !== 'undefined' && window.isSecureContext === false
+                  ? 'Kamera diblokir karena koneksi tidak aman (HTTP). Buka lewat HTTPS atau gunakan Chrome (bukan in-app browser).'
+                  : String((err as any)?.message || '').toLowerCase().includes('not implemented')
+                    ? 'getUserMedia tidak tersedia di browser ini. Coba pakai Google Chrome/Edge (bukan in-app browser) dan izinkan akses kamera.'
+                    : 'Gagal mengakses kamera. Cek izin kamera di browser dan pastikan tidak sedang dipakai aplikasi lain.';
+              setError(msg);
             }}
             className="w-full h-auto"
           />
