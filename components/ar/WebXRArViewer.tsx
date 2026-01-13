@@ -211,6 +211,8 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
     let reticle: THREE.Mesh | null = null;
     let placedObject: THREE.Object3D | null = null;
     let resizeObserver: ResizeObserver | null = null;
+    let activeSession: XRSession | null = null;
+    let lastTrackingMessageAt = 0;
 
     const host = hostRef.current;
     const buttonHost = buttonHostRef.current;
@@ -254,6 +256,9 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
         // Initial mount can be 0x0 in aspect-ratio layouts; we also attach a ResizeObserver below.
         renderer.setSize(Math.max(1, host.clientWidth), Math.max(1, host.clientHeight));
         renderer.xr.enabled = true;
+        // Prefer a floor-aligned reference space when available.
+        // This tends to be more stable for phone AR tracking.
+        renderer.xr.setReferenceSpaceType('local-floor');
         host.innerHTML = '';
         host.appendChild(renderer.domElement);
 
@@ -281,40 +286,48 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
         reticle.visible = false;
         scene.add(reticle);
 
-        // AR Button
-        const btn = ARButton.createButton(renderer, {
-          requiredFeatures: ['hit-test'],
-          optionalFeatures: ['dom-overlay'],
-          domOverlay: { root: document.body },
-        });
+        const mountArButton = () => {
+          if (!renderer) return;
 
-        // ARButton uses absolute positioning by default; when inserted into a small host div
-        // it can end up invisible. Force it to be a normal inline button.
-        btn.style.position = 'relative';
-        btn.style.bottom = 'auto';
-        btn.style.left = 'auto';
-        btn.style.right = 'auto';
-        btn.style.top = 'auto';
-        btn.style.margin = '0';
-        btn.style.padding = '8px 10px';
-        btn.style.borderRadius = '10px';
-        btn.style.border = '1px solid rgba(255,255,255,0.25)';
-        btn.style.background = 'rgba(0,0,0,0.55)';
-        btn.style.color = '#fff';
-        btn.style.fontSize = '12px';
-        btn.style.lineHeight = '14px';
+          // IMPORTANT: Do NOT use document.body as dom-overlay root.
+          // If you do, the whole page becomes an overlay inside AR fullscreen (looks like "VR" / just shows the page).
+          // Use a small dedicated overlay root (our button host) so the camera feed stays visible.
+          const btn = ARButton.createButton(renderer, {
+            requiredFeatures: ['hit-test'],
+            optionalFeatures: ['dom-overlay'],
+            domOverlay: { root: buttonHost },
+          });
 
-        buttonHost.innerHTML = '';
-        buttonHost.appendChild(btn);
+          // ARButton uses absolute positioning by default; when inserted into a small host div
+          // it can end up invisible. Force it to be a normal inline button.
+          btn.style.position = 'relative';
+          btn.style.bottom = 'auto';
+          btn.style.left = 'auto';
+          btn.style.right = 'auto';
+          btn.style.top = 'auto';
+          btn.style.margin = '0';
+          btn.style.padding = '8px 10px';
+          btn.style.borderRadius = '10px';
+          btn.style.border = '1px solid rgba(255,255,255,0.25)';
+          btn.style.background = 'rgba(0,0,0,0.55)';
+          btn.style.color = '#fff';
+          btn.style.fontSize = '12px';
+          btn.style.lineHeight = '14px';
+
+          buttonHost.innerHTML = '';
+          buttonHost.appendChild(btn);
+        };
+
+        mountArButton();
 
         setStatus('Klik tombol “Start AR”, arahkan kamera ke permukaan datar, tunggu reticle muncul, lalu tap untuk menaruh objek.');
 
         const onSelect = () => {
           if (!scene || !reticle) return;
-          if (!reticle.visible) {
-            setStatus('Belum menemukan permukaan datar. Gerakkan kamera pelan-pelan sampai reticle (lingkaran) muncul, lalu tap.');
-            return;
-          }
+
+          // If hit-test hasn't found a plane yet, still place something in front of the camera
+          // so users can confirm rendering works (helps diagnose "object not visible").
+          const placeOnReticle = reticle.visible;
 
           if (placedObject) {
             scene.remove(placedObject);
@@ -322,8 +335,25 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
           }
 
           const obj = objectFactory();
-          obj.position.setFromMatrixPosition(reticle.matrix);
-          obj.quaternion.setFromRotationMatrix(reticle.matrix);
+
+          if (placeOnReticle) {
+            obj.position.setFromMatrixPosition(reticle.matrix);
+            obj.quaternion.setFromRotationMatrix(reticle.matrix);
+          } else {
+            const cam = camera;
+            if (cam) {
+              const dir = new THREE.Vector3();
+              cam.getWorldDirection(dir);
+              const pos = new THREE.Vector3();
+              cam.getWorldPosition(pos);
+              obj.position.copy(pos).add(dir.multiplyScalar(1.0));
+              obj.quaternion.copy(cam.quaternion);
+              setStatus('Reticle belum muncul; objek ditaruh di depan kamera. Gerakkan kamera ke permukaan datar agar reticle muncul untuk penempatan yang presisi.');
+            } else {
+              setStatus('Belum menemukan permukaan datar. Gerakkan kamera pelan-pelan sampai reticle (lingkaran) muncul, lalu tap.');
+            }
+          }
+
           scene.add(obj);
           placedObject = obj;
         };
@@ -331,6 +361,7 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
         renderer.xr.addEventListener('sessionstart', () => {
           const session = renderer?.xr.getSession();
           if (!session) return;
+          activeSession = session;
           session.addEventListener('select', onSelect);
           hitTestSourceRequested = false;
           hitTestSource = null;
@@ -339,14 +370,42 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
 
         renderer.xr.addEventListener('sessionend', () => {
           hitTestSourceRequested = false;
+          try {
+            activeSession?.removeEventListener('select', onSelect);
+          } catch {
+            // ignore
+          }
+          activeSession = null;
+
+          try {
+            hitTestSource?.cancel();
+          } catch {
+            // ignore
+          }
           hitTestSource = null;
           refSpace = null;
           if (reticle) reticle.visible = false;
-          setStatus('AR berhenti.');
+
+          if (scene && placedObject) {
+            scene.remove(placedObject);
+            placedObject = null;
+          }
+
+          setStatus('AR berhenti. Kamu bisa klik Start AR lagi.');
+
+          // Recreate ARButton to avoid "must refresh page" on some devices.
+          try {
+            mountArButton();
+          } catch {
+            // ignore
+          }
         });
 
         const applySize = () => {
           if (!renderer || !camera || !host) return;
+          // Avoid touching renderer/camera sizing while in an immersive XR session.
+          // On some Android devices this can lead to freezes / pose updates stopping.
+          if (renderer.xr.isPresenting) return;
           const w = Math.max(1, host.clientWidth);
           const h = Math.max(1, host.clientHeight);
           camera.aspect = w / h;
@@ -365,6 +424,24 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
           if (!renderer || !scene || !camera) return;
           const session = renderer.xr.getSession();
           if (session && frame) {
+            // Basic tracking-loss detection: if we can't get a viewer pose, AR tracking is temporarily lost.
+            // This often happens with low light / fast motion / no visual features.
+            const rs = refSpace;
+            if (rs) {
+              try {
+                const vp = frame.getViewerPose(rs);
+                if (!vp) {
+                  const now = Date.now();
+                  if (now - lastTrackingMessageAt > 1500) {
+                    lastTrackingMessageAt = now;
+                    setStatus('Tracking AR sedang hilang. Coba tambah cahaya, gerakkan kamera pelan, dan arahkan ke permukaan bertekstur.');
+                  }
+                }
+              } catch {
+                // ignore
+              }
+            }
+
             if (!hitTestSourceRequested) {
               const requestHitTestSource = (session as any).requestHitTestSource as
                 | ((options: { space: XRReferenceSpace }) => Promise<XRHitTestSource | undefined>)
@@ -383,12 +460,19 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
               }
 
               session
-                .requestReferenceSpace('local')
+                .requestReferenceSpace('local-floor')
                 .then((space: XRReferenceSpace) => {
                   refSpace = space;
                 })
                 .catch(() => {
-                  // ignore
+                  session
+                    .requestReferenceSpace('local')
+                    .then((space: XRReferenceSpace) => {
+                      refSpace = space;
+                    })
+                    .catch(() => {
+                      // ignore
+                    });
                 });
 
               hitTestSourceRequested = true;
@@ -401,6 +485,7 @@ export default function WebXRArViewer({ recipe }: { recipe: ArRecipe | null }) {
                 if (pose) {
                   reticle.visible = true;
                   reticle.matrix.fromArray(pose.transform.matrix);
+                  (reticle as any).matrixWorldNeedsUpdate = true;
                 }
               } else {
                 reticle.visible = false;

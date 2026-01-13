@@ -8,7 +8,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Users, BookOpen, BarChart3, Plus, LogOut } from 'lucide-react';
+import { Home, Users, BookOpen, BarChart3, Plus, LogOut, Layers } from 'lucide-react';
 import { useLogout } from '@/lib/store';
 
 interface TeacherSidebarProps {
@@ -37,6 +37,7 @@ export default function TeacherSidebar({ onLogout }: TeacherSidebarProps) {
     { href: '/teacher/dashboard', icon: Home, label: 'Dashboard' },
     { href: '/teacher/students', icon: Users, label: 'Siswa' },
     { href: '/teacher/materials', icon: BookOpen, label: 'Materi' },
+    { href: '/teacher/chapters', icon: Layers, label: 'Chapter' },
     { href: '/teacher/analytics', icon: BarChart3, label: 'Analitik' },
   ];
 

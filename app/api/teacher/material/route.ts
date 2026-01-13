@@ -1,6 +1,9 @@
 /**
  * Material API Route (Teacher)
  * 
+ * GET /api/teacher/material
+ * Returns list of materials (lightweight). Optional query: ?id=... to fetch one material including content.
+ *
  * POST /api/teacher/material
  * Creates new material with optional image upload
  */
@@ -22,6 +25,54 @@ const materialSchema = z.object({
   content: z.string().min(1),
   difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']),
 });
+
+export async function GET(req: NextRequest) {
+  try {
+    const id = req.nextUrl.searchParams.get('id');
+
+    if (id) {
+      const material = await prisma.material.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          title: true,
+          content: true,
+          imageUrl: true,
+          difficulty: true,
+          refinedAt: true,
+          createdAt: true,
+          updatedAt: true,
+          chapter: { select: { id: true, title: true } },
+        },
+      });
+
+      if (!material) {
+        return NextResponse.json({ error: 'Material not found' }, { status: 404 });
+      }
+
+      return NextResponse.json(material);
+    }
+
+    const materials = await prisma.material.findMany({
+      orderBy: [{ updatedAt: 'desc' }],
+      select: {
+        id: true,
+        title: true,
+        imageUrl: true,
+        difficulty: true,
+        refinedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        chapter: { select: { id: true, title: true } },
+      },
+    });
+
+    return NextResponse.json(materials);
+  } catch (error) {
+    console.error('Error fetching materials:', error);
+    return NextResponse.json({ error: 'Failed to fetch materials' }, { status: 500 });
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {

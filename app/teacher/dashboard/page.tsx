@@ -6,10 +6,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthChecked, useHasHydrated, useLogout, useUser } from '@/lib/store';
-import { Users, AlertTriangle, BookOpen, Plus, LogOut } from 'lucide-react';
+import { useAuthChecked, useHasHydrated, useUser } from '@/lib/store';
+import { Users, AlertTriangle, BookOpen, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 
 interface Student {
@@ -30,10 +30,13 @@ export default function TeacherDashboard() {
   const user = useUser();
   const hasHydrated = useHasHydrated();
   const authChecked = useAuthChecked();
-  const logout = useLogout();
 
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [materialsCount, setMaterialsCount] = useState<number>(0);
+  const [refinedCount, setRefinedCount] = useState<number>(0);
+
+  const riskCount = useMemo(() => students.filter((s) => s.hasHighAnxiety).length, [students]);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -49,6 +52,7 @@ export default function TeacherDashboard() {
     }
 
     fetchStudents();
+    void fetchMaterialsSummary();
   }, [hasHydrated, authChecked, user, router]);
 
   const fetchStudents = async () => {
@@ -65,16 +69,17 @@ export default function TeacherDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    void (async () => {
-      try {
-        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-      } catch {
-        // ignore
-      }
-      logout();
-      router.replace('/auth/login');
-    })();
+  const fetchMaterialsSummary = async () => {
+    try {
+      const res = await fetch('/api/teacher/material');
+      if (!res.ok) return;
+      const data = await res.json().catch(() => []);
+      const items = Array.isArray(data) ? data : [];
+      setMaterialsCount(items.length);
+      setRefinedCount(items.filter((m: any) => Boolean(m?.refinedAt)).length);
+    } catch {
+      // ignore
+    }
   };
 
   if (isLoading) {
@@ -89,38 +94,9 @@ export default function TeacherDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Teacher Dashboard</h1>
-              <p className="text-gray-600">Selamat datang, {user?.name}!</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/teacher/materials/create"
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Buat Materi
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-4 py-8">
-        {/* Stats */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid md:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center gap-3 mb-2">
               <Users className="w-8 h-8 text-blue-600" />
@@ -134,33 +110,54 @@ export default function TeacherDashboard() {
               <AlertTriangle className="w-8 h-8 text-red-600" />
               <h3 className="font-semibold text-gray-900">Siswa Berisiko</h3>
             </div>
-            <p className="text-3xl font-bold text-red-600">
-              {students.filter((s) => s.hasHighAnxiety).length}
-            </p>
+            <p className="text-3xl font-bold text-red-600">{riskCount}</p>
+            <p className="text-xs text-gray-500 mt-1">Heuristik: &gt;60% emosi negatif (20 log terakhir)</p>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm p-6 border">
             <div className="flex items-center gap-3 mb-2">
               <BookOpen className="w-8 h-8 text-green-600" />
-              <h3 className="font-semibold text-gray-900">Aksi</h3>
+              <h3 className="font-semibold text-gray-900">Materi</h3>
             </div>
-            <Link
-              href="/teacher/materials/create"
-              className="text-green-600 hover:underline"
-            >
-              Tambah Materi →
-            </Link>
+            <p className="text-3xl font-bold text-green-600">{materialsCount}</p>
+            <p className="text-xs text-gray-500 mt-1">Refine/Published: {refinedCount}</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6 border">
+            <div className="flex items-center gap-3 mb-2">
+              <BarChart3 className="w-8 h-8 text-purple-600" />
+              <h3 className="font-semibold text-gray-900">Quick Links</h3>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Link href="/teacher/students" className="text-purple-700 hover:underline">
+                Kelola siswa →
+              </Link>
+              <Link href="/teacher/materials" className="text-purple-700 hover:underline">
+                Kelola materi →
+              </Link>
+              <Link href="/teacher/analytics" className="text-purple-700 hover:underline">
+                Lihat analitik →
+              </Link>
+            </div>
           </div>
         </div>
 
-        {/* Students Table */}
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          <div className="p-6 border-b">
-            <h2 className="text-xl font-bold text-gray-900">Daftar Siswa</h2>
-            <p className="text-gray-600 text-sm">
-              Siswa dengan badge merah memiliki frekuensi kecemasan tinggi
-            </p>
+      {/* Students Table */}
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className="p-6 border-b">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Ringkasan Siswa</h2>
+              <p className="text-gray-600 text-sm">Lihat detail lengkap di menu “Siswa”.</p>
+            </div>
+            <Link
+              href="/teacher/students"
+              className="text-sm text-blue-700 hover:underline"
+            >
+              Buka halaman Siswa →
+            </Link>
           </div>
+        </div>
 
           {students.length === 0 ? (
             <div className="p-12 text-center">
@@ -227,7 +224,6 @@ export default function TeacherDashboard() {
               </table>
             </div>
           )}
-        </div>
       </div>
     </div>
   );
