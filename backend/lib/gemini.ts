@@ -299,50 +299,58 @@ export async function aiGenerateTextWithOptions(prompt: string, options?: AiGene
   }
 
   // Gemini path (best effort)
-  if (isGeminiConfigured() && genAI && !isGeminiCoolingDown()) {
-    try {
-      const maxTokens = clampNumber(requestedMaxTokens ?? maxOutputTokens, 64, 2048);
-      const temp = clampNumber(requestedTemp ?? temperature, 0, 1);
+  if (isGeminiConfigured() && !isGeminiCoolingDown()) {
+    const key = getGeminiApiKey();
+    if (key && !key.startsWith('your_')) {
+      try {
+        const genAI = new GoogleGenerativeAI(key);
+        const modelName = getGeminiModelName();
+        const defaultMaxTokens = clampNumber(parseEnvInt('GEMINI_MAX_OUTPUT_TOKENS', 256), 64, 1024);
+        const defaultTemp = clampNumber(parseEnvFloat('GEMINI_TEMPERATURE', 0.2), 0, 1);
 
-      const customModel = genAI.getGenerativeModel({
-        model: modelName,
-        generationConfig: {
-          maxOutputTokens: maxTokens,
-          temperature: temp,
-          topP: 0.8,
-        },
-      });
+        const maxTokens = clampNumber(requestedMaxTokens ?? defaultMaxTokens, 64, 2048);
+        const temp = clampNumber(requestedTemp ?? defaultTemp, 0, 1);
 
-      return await withGeminiLock(async () => {
-        const result = await customModel.generateContent(prompt);
-        const response = await result.response;
-        return response.text();
-      });
-    } catch (err: any) {
-      if (isGeminiQuotaOrRateLimitError(err)) {
-        if (isNvidiaConfigured()) {
-          try {
-            return await nvidiaGenerateTextWithOptions(prompt, {
-              maxTokens: requestedMaxTokens,
-              temperature: requestedTemp,
-            });
-          } catch (nvErr) {
-            if (isMistralConfigured()) {
-              return await mistralGenerateTextWithOptions(prompt, {
+        const customModel = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            maxOutputTokens: maxTokens,
+            temperature: temp,
+            topP: 0.8,
+          },
+        });
+
+        return await withGeminiLock(async () => {
+          const result = await customModel.generateContent(prompt);
+          const response = await result.response;
+          return response.text();
+        });
+      } catch (err: any) {
+        if (isGeminiQuotaOrRateLimitError(err)) {
+          if (isNvidiaConfigured()) {
+            try {
+              return await nvidiaGenerateTextWithOptions(prompt, {
                 maxTokens: requestedMaxTokens,
                 temperature: requestedTemp,
               });
+            } catch (nvErr) {
+              if (isMistralConfigured()) {
+                return await mistralGenerateTextWithOptions(prompt, {
+                  maxTokens: requestedMaxTokens,
+                  temperature: requestedTemp,
+                });
+              }
+              throw nvErr;
             }
-            throw nvErr;
+          } else if (isMistralConfigured()) {
+            return await mistralGenerateTextWithOptions(prompt, {
+              maxTokens: requestedMaxTokens,
+              temperature: requestedTemp,
+            });
           }
-        } else if (isMistralConfigured()) {
-          return await mistralGenerateTextWithOptions(prompt, {
-            maxTokens: requestedMaxTokens,
-            temperature: requestedTemp,
-          });
         }
+        throw err;
       }
-      throw err;
     }
   }
 
