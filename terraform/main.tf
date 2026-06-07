@@ -46,11 +46,17 @@ resource "aws_subnet" "frontend_public_subnet" {
   tags                    = { Name = "Frontend-Public-Subnet" }
 }
 
-resource "aws_subnet" "backend_private_subnet" {
-  vpc_id            = aws_vpc.backend_vpc.id
-  cidr_block        = "10.2.1.0/24"
-  availability_zone = "${var.aws_region}a"
-  tags              = { Name = "Backend-Private-Subnet" }
+resource "aws_subnet" "backend_public_subnet" {
+  vpc_id                  = aws_vpc.backend_vpc.id
+  cidr_block              = "10.2.1.0/24"
+  map_public_ip_on_launch = true
+  availability_zone       = "${var.aws_region}a"
+  tags                    = { Name = "Backend-Public-Subnet" }
+}
+
+resource "aws_internet_gateway" "backend_igw" {
+  vpc_id = aws_vpc.backend_vpc.id
+  tags   = { Name = "Backend-IGW" }
 }
 
 resource "aws_subnet" "database_private_subnet_a" {
@@ -127,12 +133,17 @@ resource "aws_route_table" "backend_rt" {
     vpc_peering_connection_id = aws_vpc_peering_connection.back_to_db.id
   }
 
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.backend_igw.id
+  }
+
   tags = { Name = "Backend-RouteTable" }
 }
 
 # Backend Route Table Association
 resource "aws_route_table_association" "backend_rta" {
-  subnet_id      = aws_subnet.backend_private_subnet.id
+  subnet_id      = aws_subnet.backend_public_subnet.id
   route_table_id = aws_route_table.backend_rt.id
 }
 
@@ -178,7 +189,7 @@ resource "aws_instance" "frontend_server" {
 resource "aws_instance" "backend_server" {
   ami                    = var.ami_id
   instance_type          = "t3.micro"
-  subnet_id              = aws_subnet.backend_private_subnet.id
+  subnet_id              = aws_subnet.backend_public_subnet.id
   vpc_security_group_ids = [aws_security_group.backend_sg.id]
   key_name               = var.key_name
 
@@ -209,27 +220,8 @@ resource "aws_db_instance" "mysql_db" {
   tags                   = { Name = "AdaptiveLearning-MySQL" }
 }
 
-# ==========================================
-# 6. MULTI-CLOUD OBJECT STORAGE (S3 Bucket)
-# ==========================================
-
-resource "aws_s3_bucket" "storage_bucket" {
-  bucket        = var.bucket_name
-  force_destroy = true
-  tags = {
-    Name        = "AdaptiveLearning-Assets"
-    MultiCloud  = "True"
-  }
-}
-
-resource "aws_s3_bucket_public_access_block" "public_block" {
-  bucket = aws_s3_bucket.storage_bucket.id
-
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
-}
+# Object Storage is handled externally via Cloudflare R2
+# (AWS S3 resource removed to strictly enforce multi-cloud compliance)
 
 # ==========================================
 # 7. SECURITY GROUPS
@@ -287,7 +279,7 @@ resource "aws_security_group" "backend_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["10.1.0.0/16"] # Bastion/Frontend SSH tunnel
+    cidr_blocks = ["0.0.0.0/0"] # Allowed for GitHub Actions SSH deploy
   }
 
   egress {

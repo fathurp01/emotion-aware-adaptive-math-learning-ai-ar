@@ -13,7 +13,4 @@ output "database_endpoint" {
   description = "MySQL database endpoint connection string"
 }
 
-output "s3_bucket_domain" {
-  value       = aws_s3_bucket.storage_bucket.bucket_regional_domain_name
-  description = "S3 Object Storage Bucket Regional Domain Name"
-}
+# Regional S3 bucket output removed as Object Storage is on Cloudflare R2
