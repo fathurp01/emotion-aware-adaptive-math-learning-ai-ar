@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: emotion_learning_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: emotion_learning_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: adaptive_learning_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=mysql://root:password@mysql:3306/emotion_learning_db
+      - GEMINI_API_KEY=your_gemini_api_key_here
+      - NVIDIA_API_KEY=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
+      - NVIDIA_MODEL=meta/llama-3.1-8b-instruct
+      - MISTRAL_API_KEY=your_mistral_api_key_here
+      - AUTH_SECRET=8b9d311fa67702f2053676c8c4c795bb4f895c010d8a4ba1
+      - MATERIAL_PRECOMPUTE_ON_STARTUP=1
+    depends_on:
+      - mysql
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: adaptive_learning_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - BACKEND_API_URL=http://backend:5000
+      - AUTH_SECRET=8b9d311fa67702f2053676c8c4c795bb4f895c010d8a4ba1
+      - NEXTAUTH_SECRET=8b9d311fa67702f2053676c8c4c795bb4f895c010d8a4ba1
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

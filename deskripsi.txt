@@ -1,0 +1,143 @@
+================================================================================
+DOKUMENTASI LENGKAP FITUR & ARSITEKTUR CLOUD PLATFORM
+EMOTION-AWARE ADAPTIVE MATH LEARNING AI & AR PLATFORM
+================================================================================
+
+Aplikasi ini dirancang sebagai platform pembelajaran matematika adaptif berbasis Cloud Native dan Kecerdasan Buatan (AI) yang diselaraskan dengan SDGs Poin 4: Quality Education (Pendidikan Berkualitas). Sistem ini dapat menyesuaikan materi, gaya penyampaian, dan kesulitan soal kuis secara real-time berdasarkan gaya belajar siswa (Visual, Auditory, Kinesthetic) dan emosi siswa (Happy, Neutral, Anxious/Negative) yang dideteksi secara langsung melalui kamera webcam.
+
+--------------------------------------------------------------------------------
+1. DESKRIPSI DETAIL FITUR APLIKASI
+--------------------------------------------------------------------------------
+
+A. SISTEM PENGGUNA (ROLE-BASED AUTHENTICATION & ONBOARDING)
+- Sistem Autentikasi Ganda: Login & registrasi terpisah untuk Guru (Teacher) dan Siswa (Student) menggunakan JWT token berbasis HTTP-only cookie untuk keamanan maksimal.
+- Kuesioner Onboarding Gaya Belajar: Siswa baru wajib mengisi kuesioner psikologi belajar awal untuk menentukan preferensi penyampaian materi, yaitu:
+  * Visual: Siswa lebih menyukai ilustrasi gambar, diagram alur, dan grafik.
+  * Auditory: Siswa disajikan audio narasi pembaca materi secara interaktif.
+  * Kinesthetic: Siswa disajikan visualisasi Augmented Reality (AR) 3D interaktif.
+
+B. SMART EMOTION CAMERA (AI / COMPUTER VISION CLIENT-SIDE)
+- Deteksi Emosi Real-time: Menggunakan kamera depan (webcam) siswa untuk menangkap ekspresi wajah siswa setiap 1 detik.
+- Multi-Tiered AI Fallback Engine:
+  * Tier 1 (Model Utama): TensorFlow.js memuat model Convolutional Neural Network (CNN) lokal (Self-hosted model) yang berada di dalam direktori publik frontend (`/model/tfjs_model/model.json` & `metadata.json`).
+  * Tier 2 (MediaPipe Fallback): Jika file model utama corrupt atau gagal diload, sistem otomatis menangkap exception tersebut dan melakukan fallback ke MediaPipe Face Landmarker. MediaPipe mendeteksi koordinat landmark wajah dan mengekstrak emosi menggunakan logika heuristik blendshape.
+  * Tier 3 (Safe Mode Fallback): Jika MediaPipe juga gagal dimuat (misal karena jaringan offline/blokir CDN), detektor akan beralih ke mode 'none' secara anggun tanpa membuat aplikasi crash. UI akan menggunakan data histori basis data atau performa kuis untuk menebak emosi siswa.
+- Sinkronisasi Data: Data klasifikasi emosi (Happy, Neutral, Negative) beserta persentase confidence log-nya akan disinkronisasikan ke backend setiap 5 detik (dibatasi secara debounce untuk menghemat bandwidth dan resource database).
+
+C. ADAPTIVE LEARNING MATERIAL PAGE (FUZZY LOGIC & MULTI-SENSORY DELIVERY)
+- Antarmuka Adaptif Berbasis Emosi & Performa: Halaman materi secara dinamis merubah tema warna UI, background, dan teks berdasarkan emosi siswa saat itu (misalnya: memberikan warna sejuk biru menenangkan ketika mendeteksi emosi cemas/frustrasi).
+- Fitur Pendorong Gaya Belajar (Multi-Sensory):
+  * Gaya Belajar Visual: Gambar representasi diagram matematika dimuat dari Object Storage secara dinamis.
+  * Gaya Belajar Auditory: Mengintegrasikan komponen AudioReader (Text-to-Speech) dalam bahasa Inggris untuk membacakan materi.
+  * Gaya Belajar Kinesthetic: Memuat panel visualisasi AR (Augmented Reality) berbasis resep 3D ter-cache untuk interaksi spasial matematika.
+- Kontrol Kestabilan UI (Anti-Flicker): Skema penyederhanaan konten menggunakan filter waktu tunggu (debounce) aktif selama 4 detik dan penahanan minimum (hold-time) selama 60 detik untuk mencegah perubahan visual UI yang terlalu cepat (flip-flop) yang dapat mengganggu konsentrasi siswa.
+- Latihan Pernapasan Interaktif (Breathing Exercise): Jika sistem mendeteksi emosi negatif terus-menerus dengan tingkat cemas tinggi, sistem akan memicu popup latihan pernapasan (tarik napas 4 detik, tahan 4 detik, hembuskan 4 detik) untuk meredakan ketegangan psikologis siswa.
+- Pesan Motivasi Otomatis (Encouragement Toast): Memberikan ucapan motivasi psikologis yang relevan secara berkala jika siswa terdeteksi cemas atau lelah saat membaca materi.
+
+D. ADAPTIVE QUIZ ENGINE (LLM NVIDIA NIM & PERFORMANCE CRITERIA)
+- Pembuatan Soal Dinamis Berbasis AI: Soal kuis matematika digenerasi secara on-the-fly oleh backend menggunakan NVIDIA NIM API dengan model LLM berkinerja tinggi `meta/llama-3.1-8b-instruct`.
+- AI LLM Fallback: Jika koneksi API NVIDIA NIM mengalami limitasi atau error, backend secara otomatis melakukan failover ke Google Gemini API atau Mistral AI.
+- Tingkat Kesulitan Adaptif (Fuzzy Logic): Kesulitan soal (EASY, MEDIUM, HARD) disesuaikan secara real-time berdasarkan fuzzy logic yang menggabungkan parameter: durasi waktu menjawab, jumlah jawaban salah berturut-turut, dan tingkat emosi negatif siswa.
+- Feedback Personalisasi Berbasis AI: Setiap selesai menjawab, LLM akan menganalisis jawaban siswa secara mendalam, memberikan penjelasan langkah demi langkah, dan menyisipkan kalimat penyemangat yang disesuaikan dengan kondisi psikologis siswa.
+
+E. PERSONALIZED REMEDIAL GENERATOR
+- Jika siswa memperoleh nilai kuis di bawah standar kelulusan, tombol "Generate Remedial" akan muncul di halaman materi pembelajaran.
+- Backend akan menggunakan LLM untuk merangkum ulang poin-poin materi yang belum dipahami siswa berdasarkan riwayat kesalahan kuis dan emosi negatif mereka, lalu menghasilkan materi remedial personal dalam format Markdown.
+
+F. TEACHER ANALYTICS & MONITORING DASHBOARD
+- Visualisasi Statistik Kelas: Guru dapat memantau distribusi gaya belajar siswa (Visual, Auditory, Kinesthetic) dalam bentuk chart lingkaran.
+- Monitoring Emosi Siswa: Grafik tren emosi siswa dari waktu ke waktu selama proses belajar untuk membantu guru mendeteksi siswa yang mengalami kesulitan atau burnout.
+- Manajemen Chapter & Materi: Guru dapat menambah, mengedit, dan menghapus materi kuis/pelajaran. Dilengkapi tombol "AI Refine" untuk memperbaiki struktur penulisan materi secara otomatis menggunakan bantuan LLM sebelum diterbitkan ke siswa.
+
+--------------------------------------------------------------------------------
+2. KESESUAIAN DENGAN KETENTUAN UAS CLOUD COMPUTING (Taraf Nilai Tertinggi)
+--------------------------------------------------------------------------------
+
+A. ARSITEKTUR CLOUD NATIVE & SEGMENTASI VPC (100% Sesuai)
+Sesuai dengan ketentuan utama bagian A, infrastruktur didefinisikan menggunakan Terraform (Infrastructure as Code) di direktori `/terraform/main.tf` dengan pembagian 4 VPC yang tersegmentasi secara ketat demi alasan keamanan (Isolation & Security):
+1. Frontend VPC (CIDR 10.1.0.0/16): Subnet publik yang menampung server frontend Next.js, memiliki Internet Gateway untuk diakses oleh publik.
+2. Backend VPC (CIDR 10.2.0.0/16): Subnet privat yang menampung server API backend. Hanya menerima koneksi dari Frontend VPC melalui VPC Peering.
+3. Database VPC (CIDR 10.3.0.0/16): Subnet privat yang menampung MySQL database (RDS). Hanya menerima koneksi port 3306 dari Backend VPC.
+4. Storage VPC (CIDR 10.4.0.0/16): Subnet privat yang menghubungkan instance backend ke private endpoint AWS S3 secara aman.
+- Koneksi antar VPC dihubungkan secara aman menggunakan VPC Peering Connection (`front_to_back` dan `back_to_db`) lengkap dengan pengaturan Security Group yang ketat.
+
+B. MULTI-CLOUD STORAGE REQUIREMENT (100% Sesuai)
+Sesuai ketentuan Multi-Cloud, penyimpanan aset media (gambar materi, resep AR, audio narasi) menggunakan Object Storage yang terpisah dari provider compute utama:
+- Jika compute utama dijalankan di AWS (EC2 & RDS), Object Storage dikonfigurasikan ke Cloudflare R2 atau GCP Cloud Storage (Google Cloud Storage) via S3-compatible API client di backend (`backend/lib/s3.ts`).
+- Konfigurasi ini menjamin jika terjadi downtime pada server komputasi utama, aset statis aplikasi tetap aman dan terdistribusi di cloud provider lain.
+
+C. CONTAINERIZATION & DEPLOYMENT (100% Sesuai)
+- Dockerfile Frontend (`frontend/Dockerfile`): Menggunakan multi-stage build untuk mengoptimalkan ukuran image Next.js (menghasilkan production-ready build menggunakan node:20-alpine).
+- Dockerfile Backend (`backend/Dockerfile`): Melakukan kompilasi Prisma client dan menjalankan server API Next.js/Node secara efisien.
+- docker-compose.yml (Root): Mengorkestrasikan service `frontend`, `backend`, dan `database` (MySQL) dalam satu grup container lengkap dengan environment variables yang terisolasi.
+
+D. INTEGRASI AI MINIMAL 1 DENGAN IMPLEMENTASI LOKAL/API (100% Sesuai - Kelebihan Kriteria)
+Aplikasi memiliki 3 integrasi AI utama:
+1. Computer Vision Wajah (Local Model): TensorFlow.js client-side memuat file model klasifikasi emosi langsung dari server aplikasi (Self-hosted model).
+2. Computer Vision Wajah (Fallback): MediaPipe Face Landmarker API.
+3. Large Language Model (LLM): NVIDIA NIM API (`meta/llama-3.1-8b-instruct`) dengan fallback otomatis ke Google Gemini API dan Mistral AI untuk adaptasi kuis dan remedial.
+
+E. CI/CD PIPELINE REQUIREMENT (100% Sesuai)
+Sistem CI/CD diimplementasikan melalui GitHub Actions (`.github/workflows/ci-cd.yml`):
+1. Build & Test Step: Menjalankan `npm ci`, membuat Prisma generator, dan melakukan `npm run build` untuk backend dan frontend secara paralel pada container Ubuntu untuk memverifikasi tidak ada error sintaks.
+2. Dockerize Step: Membangun docker image backend dan frontend menggunakan Docker Buildx, lalu melakukan push ke Docker Hub Registry.
+3. Deploy Step: Melakukan koneksi SSH otomatis ke server EC2 produksi, menarik (pull) image docker terbaru dari Docker Hub, memperbarui container dengan `docker compose up -d`, dan melakukan migrasi DB (`prisma db push`) serta seeding data secara otomatis.
+
+--------------------------------------------------------------------------------
+3. IMPLEMENTASI BONUS PENILAIAN (Daftar Nilai Tambahan / Extra Points)
+--------------------------------------------------------------------------------
+
+A. SELF-HOSTED AI MODEL (+5 Poin Bonus)
+Sistem tidak hanya menggunakan API cloud eksternal, melainkan men-host model deteksi emosi wajah TensorFlow.js secara mandiri di dalam server lokal frontend (`frontend/public/model/tfjs_model/`). Hal ini menghemat biaya latensi dan meningkatkan privasi data siswa karena klasifikasi emosi diproses langsung di peramban (browser) pengguna tanpa mengirimkan frame video ke server eksternal.
+
+B. TERRAFORM / INFRASTRUCTURE AS CODE (+5 Poin Bonus)
+Penyusunan seluruh infrastruktur komputasi cloud (VPC, subnets, route tables, internet gateways, VPC peering, EC2 instances, security groups, RDS MySQL, S3 Bucket) ditulis secara deklaratif menggunakan Terraform di dalam folder `/terraform`. Hal ini memudahkan replikasi infrastruktur hanya dengan perintah `terraform apply`.
+
+C. KUBERNETES IMPLEMENTATION (+5 Poin Bonus)
+Selain Docker Compose, proyek ini menyediakan manifestasi Kubernetes lengkap di dalam folder `/k8s`:
+- `database.yaml`: Menggunakan StatefulSet untuk memastikan MySQL memiliki penyimpanan persisten (PersistentVolumeClaim).
+- `backend.yaml`: Deployment pod API backend yang dikonfigurasi dengan toleransi restart dan port internal.
+- `frontend.yaml`: Deployment pod Next.js yang menangani traffic web siswa dan guru.
+- `ingress.yaml`: Ingress controller untuk merouting domain frontend dan backend secara otomatis melalui satu IP load balancer.
+
+D. MONITORING GRAFANA / PROMETHEUS (+3 Poin Bonus)
+Terintegrasi di dalam folder `/monitoring`, sistem ini menyediakan:
+- `prometheus.yml`: Mengatur scraping metrics performa kontainer Node.js, Next.js backend, dan resource Docker.
+- `docker-compose.monitoring.yml`: Menjalankan instance Prometheus server (port 9090) dan Grafana server (port 3001) untuk melakukan visualisasi metrik sistem (CPU, RAM, network, error rates) secara real-time.
+
+E. AUTOSCALING (+3 Poin Bonus)
+Di dalam Kubernetes manifest (`k8s/backend.yaml`), dikonfigurasikan HorizontalPodAutoscaler (HPA) untuk pod backend:
+- HPA akan memantau beban CPU pod backend secara dinamis.
+- Jika beban CPU melebihi 70%, Kubernetes akan secara otomatis melakukan scale-out jumlah replika pod backend dari minimal 2 pod hingga maksimal 10 pod guna menampung lonjakan traffic siswa yang sedang melaksanakan ujian/kuis secara serempak.
+
+================================================================================
+DOKUMENTASI INI SIAP DIGUNAKAN SEBAGAI ACUAN UTAMA DEPLOYMENT DAN MATERI LAPORAN UAS
+================================================================================
+
+Nama project: Emotion-Aware Adaptive Math Learning AI & AR Platform
+Tema SDGs: Poin 4: Quality Education (Pendidikan Berkualitas - Pembelajaran Adaptif)
+Tech stack frontend: Next.js (React), Tailwind CSS, Lucide React, Zustand, TensorFlow.js (local self-hosted CNN), MediaPipe Face Landmarker.
+Tech stack backend: Next.js Server-Side APIs, Prisma ORM, JWT Auth (HTTP-only cookies), NVIDIA NIM API (Llama 3.1 8B Instruct), AWS SDK S3.
+Database: MySQL (relasional, dikelola via Prisma ORM)
+Fitur yang sudah ada:
+- Multi-role login (Siswa/Guru) & kuesioner onboarding gaya belajar.
+- Halaman materi pelajaran adaptif (Fuzzy logic UI, Audio Reader/TTS, Panel AR 3D, dan anti-flicker delay).
+- Latihan pernapasan interaktif (Breathing Exercise) jika siswa cemas.
+- Personal Remedial Generator berdasarkan kesalahan kuis.
+- Teacher Analytics Dashboard (visualisasi gaya belajar, grafik emosi, monitoring logs, CRUD Chapter & Material).
+Fitur AI yang sudah ada:
+- Deteksi emosi client-side berbasis TensorFlow.js (local CNN model) dengan fallback otomatis ke MediaPipe Face Landmarker.
+- Generasi soal kuis matematika dinamis adaptif berbasis NVIDIA NIM API (dengan fallback otomatis ke Gemini & Mistral).
+- Generasi feedback kuis personal & materi remedial adaptif oleh LLM.
+- AI Refinement untuk meningkatkan kualitas penulisan materi pelajaran bagi Guru.
+Storage/file upload sudah ada atau belum: Sudah ada (terintegrasi dengan Object Storage kompatibel S3 pada backend/lib/s3.ts).
+Docker sudah ada atau belum: Sudah ada (Dockerfile frontend, Dockerfile backend, dan docker-compose.yml di root folder).
+CI/CD sudah ada atau belum: Sudah ada (GitHub Actions Pipeline di .github/workflows/ci-cd.yml yang mencakup Build, Test, Dockerize, Push, dan Deploy otomatis via SSH).
+Cloud yang ingin dipakai: AWS (untuk Compute EC2 & Database RDS MySQL) dan Cloudflare (untuk DNS, CDN, dan Object Storage R2) guna memenuhi kriteria Multi-Cloud.
+Hasil rekomendasi dari Antigravity:
+- Sangat direkomendasikan menggunakan Cloudflare R2 sebagai Object Storage. Karena server utama (Compute) Anda menggunakan AWS, penggunaan Cloudflare R2 secara otomatis memenuhi syarat wajib Multi-Cloud UAS (layanan storage berbeda dari komputasi utama).
+- Menggunakan Cloudflare CDN di depan Cloudflare R2 (melalui CNAME/Custom Domain) adalah solusi terbaik untuk mengatasi kendala AWS CloudFront, sekaligus mempercepat distribusi data statis ke browser siswa secara gratis.
+- Menggunakan local self-hosted TFJS model di client-side menghemat latensi jaringan dan konsumsi daya server backend secara masif.
+- Pengaturan hold-time 60 detik pada penyederhanaan teks adaptif sukses menghindari perubahan visual UI yang terlalu sering (anti-flicker).
+- Sistem backup kuis LLM (NVIDIA NIM -> Gemini -> Mistral) menjamin kuis tetap dapat diakses tanpa hambatan downtime API.
+Kendala saat ini: Tidak ada kendala sistem. AWS CloudFront yang bermasalah berhasil digantikan sepenuhnya oleh Cloudflare CDN yang terhubung ke Cloudflare R2 sebagai multi-cloud storage.

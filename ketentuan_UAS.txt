@@ -1,0 +1,410 @@
+INSTITUT TEKNOLOGI NASIONAL
+Jalan Penghulu K.H. Mustapa 23 Telp. 7272215, Bandung - 40124
+
+EVALUASI AKHIR SEMESTER
+PRESENTASI PROJECT
+SEMESTER GENAP 2025/2026
+
+Mata Kuliah    : Cloud Computing
+Program Studi  : Informatika
+Dosen          : Diash Firdaus, M.T.
+Kelas          : AA - BB
+Tanggal        : 19 Juni 2025
+Waktu          : 11.00 - 13.00
+Sifat          : Presentasi Project
+
+SUBCPMK 5 (100%)
+
+==================================================
+DESKRIPSI TUGAS
+==================================================
+
+Mahasiswa diminta membuat sebuah aplikasi berbasis Cloud Computing yang mendukung salah satu tujuan Sustainable Development Goals (SDGs).
+
+Pilihan bidang SDGs yang dapat digunakan:
+
+1. Kesehatan
+   Contoh:
+   - Diagnosa medis
+   - Telemedicine
+   - Monitoring pasien
+   - Riset obat
+
+2. Reformasi Birokrasi
+   Contoh:
+   - Digitalisasi administrasi publik
+   - Sistem pelayanan masyarakat
+   - E-government
+
+3. Pendidikan
+   Contoh:
+   - Pembelajaran adaptif
+   - Analisis akademik
+   - LMS berbasis AI
+
+4. Ketahanan Pangan
+   Contoh:
+   - Smart farming
+   - Monitoring pertanian atau perikanan
+   - Prediksi hasil panen
+
+5. Mobilitas dan Kota Cerdas
+   Contoh:
+   - Smart transportation
+   - Traffic management
+   - Parkir pintar
+
+==================================================
+KETENTUAN UTAMA
+==================================================
+
+Aplikasi wajib memiliki minimal 1 fitur Artificial Intelligence (AI) yang terintegrasi langsung ke dalam sistem.
+
+Jenis AI yang dapat digunakan:
+
+- Model lokal atau open source
+- API pihak ketiga
+- LLM (Large Language Model)
+- Computer Vision
+- Machine Learning
+
+Contoh layanan AI yang diperbolehkan:
+
+- Hugging Face
+- Google Gemini API
+- OpenAI API
+- Mistral AI
+- Qwen AI
+- Claude API
+- Ollama
+- TensorFlow
+- PyTorch
+
+==================================================
+KETENTUAN APLIKASI
+==================================================
+
+Aplikasi wajib menggunakan arsitektur Cloud Native dan terdiri dari komponen berikut:
+
+1. Frontend
+2. Backend / API
+3. Database
+4. Object Storage / Bucket
+5. Docker Container
+6. CDN (Content Delivery Network)
+7. VPC (Virtual Private Cloud)
+8. AI Service / AI Engine
+
+==================================================
+KETENTUAN INFRASTRUKTUR CLOUD
+==================================================
+
+A. Segmentasi VPC
+
+Setiap komponen berikut harus ditempatkan pada VPC yang berbeda:
+
+1. Frontend VPC
+2. Backend VPC
+3. Database VPC
+4. Bucket / Storage VPC
+5. AI Service VPC
+
+Catatan:
+AI Service VPC bersifat optional, tetapi direkomendasikan.
+
+B. Multi-Cloud Requirement
+
+Bucket atau Object Storage wajib menggunakan layanan cloud yang berbeda dari layanan utama aplikasi.
+
+Contoh implementasi:
+
+Contoh 1:
+- Compute menggunakan AWS
+- Bucket menggunakan GCP Cloud Storage
+
+Contoh 2:
+- Compute menggunakan Azure
+- Bucket menggunakan AWS S3
+
+==================================================
+CONTAINERIZATION DAN DEPLOYMENT
+==================================================
+
+Komponen yang wajib digunakan:
+
+1. Docker
+2. Docker Compose atau Container Registry
+
+Komponen optional sebagai nilai tambahan:
+
+1. Kubernetes (K8s)
+2. Helm
+3. Istio
+4. Service Mesh
+
+==================================================
+CI/CD REQUIREMENT
+==================================================
+
+Aplikasi wajib memiliki proses CI/CD.
+
+Pipeline minimal harus mencakup:
+
+1. Build
+2. Test
+3. Dockerize
+4. Push image
+5. Deploy otomatis
+
+==================================================
+DELIVERABLES / PENGUMPULAN
+==================================================
+
+1. Laporan PDF
+
+Laporan wajib berisi:
+
+- Latar belakang masalah
+- Analisis sistem
+- Arsitektur cloud
+- Integrasi AI
+- CI/CD
+- Tutorial deployment
+- Monitoring sistem
+- Kesimpulan
+
+Format laporan:
+
+- File dalam format PDF
+- Minimal 20 halaman
+
+2. Repository GitHub
+
+Repository wajib berisi:
+
+- Frontend
+- Backend
+- Database (.sql)
+- Dockerfile
+- docker-compose.yml
+- README.md
+- Dokumentasi API
+- Dokumentasi AI
+
+3. Draft HKI
+
+Mahasiswa wajib membuat Draft HKI sesuai template yang diberikan.
+
+4. Video Presentasi
+
+Setiap kelompok wajib membuat video presentasi aplikasi.
+
+Isi video wajib memuat:
+
+1. Penjelasan masalah SDGs yang dipilih
+2. Demo fitur aplikasi
+3. Penjelasan arsitektur cloud
+4. Penjelasan integrasi AI
+5. Penjelasan CI/CD
+6. Demo deployment aplikasi
+
+Ketentuan video:
+
+- Durasi video: 10 sampai 15 menit
+- Format video: MP4
+- Upload ke YouTube
+- Link YouTube dicantumkan pada laporan
+- Resolusi minimal 720p
+- Audio harus jelas dan dapat dipahami
+- Setiap anggota kelompok harus melakukan presentasi bagiannya
+
+==================================================
+ATURAN PRESENTASI VIDEO
+==================================================
+
+Video wajib dibuat dengan format:
+
+NO CUT NO EDIT
+
+Artinya:
+
+- Presentasi dilakukan dalam 1 kali rekaman penuh
+- Tidak boleh ada pemotongan video
+- Tidak boleh ada penggabungan clip
+- Tidak boleh menggunakan voice over terpisah
+- Tidak boleh menggunakan editing transisi
+- Tidak boleh melakukan manipulasi demo
+
+Tujuan aturan video:
+
+1. Menguji kesiapan sistem secara real-time
+2. Menguji pemahaman seluruh anggota kelompok
+3. Memastikan deployment dan aplikasi benar-benar berjalan
+
+==================================================
+EVALUASI AKHIR
+==================================================
+
+Ketentuan kelompok:
+
+- Tugas dikerjakan secara berkelompok
+- Jumlah anggota maksimal 3 orang per kelompok
+
+Setiap anggota wajib memahami:
+
+1. Arsitektur cloud
+2. Deployment
+3. Integrasi AI
+4. CI/CD
+5. Source code aplikasi
+
+==================================================
+PROGRESS MINGGUAN
+==================================================
+
+Setiap kelompok wajib mengumpulkan laporan progress mingguan selama pengerjaan proyek berlangsung.
+
+Tujuan laporan progress:
+
+1. Memantau pembagian tugas anggota
+2. Memantau perkembangan implementasi sistem
+3. Memantau kendala yang dihadapi
+4. Memantau progress deployment dan integrasi cloud
+5. Memantau progress AI dan CI/CD
+
+Isi minimal laporan progress mingguan:
+
+1. Nama kelompok dan anggota
+2. Progress pekerjaan minggu berjalan
+3. Screenshot hasil pengerjaan
+4. Kendala dan solusi
+5. Target pengerjaan minggu berikutnya
+6. Link repository GitHub terbaru
+
+Format pengumpulan progress:
+
+- Format file: PDF
+- Nama file: Progress_KelompokX_MingguX.pdf
+
+Contoh nama file:
+
+Progress_Kelompok3_Minggu2.pdf
+
+Pengumpulan:
+
+Seluruh progress mingguan wajib dikumpulkan pada folder Google Drive sesuai kelas:
+
+- Kelas AA
+- Kelas BB
+
+Ketentuan tambahan progress:
+
+1. Progress dikumpulkan setiap minggu sesuai jadwal perkuliahan.
+2. Keterlambatan pengumpulan akan mengurangi nilai dokumentasi.
+3. Kelompok yang tidak mengumpulkan progress lebih dari 2 kali dianggap tidak aktif dalam pengerjaan proyek.
+4. Dosen berhak melakukan pengecekan repository GitHub sewaktu-waktu untuk memastikan progress sesuai laporan.
+
+==================================================
+RUBRIK PENILAIAN
+==================================================
+
+1. Implementasi Cloud Architecture
+   Kriteria:
+   - Penggunaan cloud service
+   - VPC
+   - CDN
+   - Scalability
+   - Security
+   Bobot: 20%
+
+2. Integrasi AI
+   Kriteria:
+   - Implementasi AI berjalan dengan baik
+   - AI relevan dengan SDGs
+   Bobot: 20%
+
+3. Multi-Cloud Architecture
+   Kriteria:
+   - Integrasi bucket atau service lintas cloud provider
+   Bobot: 10%
+
+4. Frontend dan Backend
+   Kriteria:
+   - Fungsionalitas aplikasi
+   - Integrasi API
+   Bobot: 10%
+
+5. Database Design
+   Kriteria:
+   - Struktur database
+   - Relasi
+   - Optimasi query
+   Bobot: 5%
+
+6. Docker dan Containerization
+   Kriteria:
+   - Dockerfile
+   - Container orchestration
+   - Deployment
+   Bobot: 10%
+
+7. CI/CD Pipeline
+   Kriteria:
+   - Build
+   - Testing
+   - Deployment otomatis
+   Bobot: 10%
+
+8. Dokumentasi dan Manual Guide
+   Kriteria:
+   - Kelengkapan laporan
+   - Tutorial deployment
+   Bobot: 5%
+
+9. Video Demo
+   Kriteria:
+   - Kejelasan penjelasan
+   - Demo sistem
+   Bobot: 5%
+
+10. Presentasi
+    Kriteria:
+    - Pemahaman konsep oleh seluruh anggota
+    Bobot: 5%
+
+Total bobot penilaian: 100%
+
+==================================================
+BONUS PENILAIAN
+==================================================
+
+1. Kubernetes Implementation
+   Tambahan nilai: +5
+
+2. Terraform / Infrastructure as Code
+   Tambahan nilai: +5
+
+3. Monitoring Grafana / Prometheus
+   Tambahan nilai: +3
+
+4. Self-hosted AI Model
+   Tambahan nilai: +5
+
+5. Autoscaling
+   Tambahan nilai: +3
+
+6. Serverless Architecture
+   Tambahan nilai: +3
+
+7. GPU Cloud Deployment
+   Tambahan nilai: +5
+
+==================================================
+CATATAN
+==================================================
+
+1. Seluruh anggota kelompok harus aktif berkontribusi.
+2. Dilarang copy-paste project tanpa modifikasi.
+3. Deployment wajib dapat dijalankan saat demo atau evaluasi.
+4. Repository GitHub harus dapat diakses saat penilaian berlangsung.
+5. Nilai individu dapat berbeda berdasarkan hasil tanya jawab saat evaluasi akhir.

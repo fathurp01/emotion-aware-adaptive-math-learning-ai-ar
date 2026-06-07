@@ -14,6 +14,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { z } from 'zod';
 import { createHash } from 'crypto';
+import { isS3Configured, uploadToS3 } from '@/lib/s3';
 
 function sha256(input: string): string {
   return createHash('sha256').update(input, 'utf8').digest('hex');
@@ -119,24 +120,31 @@ export async function POST(req: NextRequest) {
     if (imageFile) {
       const bytes = await imageFile.arrayBuffer();
       const buffer = Buffer.from(bytes);
-
-      // Create uploads directory if it doesn't exist
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-      try {
-        await mkdir(uploadsDir, { recursive: true });
-      } catch {
-        // Directory might already exist, that's fine
-      }
-
-      // Generate unique filename
       const timestamp = Date.now();
       const extension = path.extname(imageFile.name);
       const filename = `material-${timestamp}${extension}`;
-      const filepath = path.join(uploadsDir, filename);
+      const contentType = imageFile.type || 'image/jpeg';
 
-      // Save file
-      await writeFile(filepath, buffer);
-      imageUrl = `/uploads/${filename}`;
+      if (isS3Configured()) {
+        try {
+          imageUrl = await uploadToS3(filename, buffer, contentType);
+        } catch (s3Error) {
+          console.error('S3 upload failed, falling back to local storage:', s3Error);
+        }
+      }
+
+      // Fallback to local storage if S3 was not configured or failed
+      if (!imageUrl) {
+        const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+        try {
+          await mkdir(uploadsDir, { recursive: true });
+        } catch {
+          // Directory might already exist, that's fine
+        }
+        const filepath = path.join(uploadsDir, filename);
+        await writeFile(filepath, buffer);
+        imageUrl = `/uploads/${filename}`;
+      }
     }
 
     // Create material in database

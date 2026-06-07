@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adaptive-math-frontend
+  namespace: default
+  labels:
+    app: adaptive-math-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: adaptive-math-frontend
+  template:
+    metadata:
+      labels:
+        app: adaptive-math-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: yourusername/adaptive-math-frontend:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: BACKEND_API_URL
+              value: "http://backend-service:5000"
+            - name: AUTH_SECRET
+              value: "8b9d311fa67702f2053676c8c4c795bb4f895c010d8a4ba1"
+            - name: NEXTAUTH_SECRET
+              value: "8b9d311fa67702f2053676c8c4c795bb4f895c010d8a4ba1"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: default
+spec:
+  selector:
+    app: adaptive-math-frontend
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+  type: ClusterIP

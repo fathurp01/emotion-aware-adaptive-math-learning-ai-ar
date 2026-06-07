@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: adaptive_learning_prometheus
+    restart: always
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - adaptive-learning-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: adaptive_learning_grafana
+    restart: always
+    ports:
+      - "3001:3000" # Map to 3001 host port to prevent collision with next.js frontend on 3000
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    networks:
+      - adaptive-learning-net
+
+networks:
+  adaptive-learning-net:
+    name: emotion-aware-adaptive-math-learning-ai-ar_default # joins root docker-compose network
+    external: true
