@@ -1,0 +1,85 @@
+/**
+ * Mistral AI Integration (Server-side)
+ *
+ * Uses Mistral Chat Completions API.
+ * Keep this module server-only (do not import in client components).
+ */
+
+type MistralChatResponse = {
+  choices?: Array<{ message?: { content?: string } }>;
+};
+
+export type MistralGenerateOptions = {
+  maxTokens?: number;
+  temperature?: number;
+  model?: string;
+};
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function parseEnvInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function parseEnvFloat(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const n = Number.parseFloat(raw);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export function isMistralConfigured(): boolean {
+  const key = (process.env.MISTRAL_API_KEY || '').trim();
+  return Boolean(key && !key.startsWith('your_'));
+}
+
+export async function mistralGenerateTextWithOptions(
+  prompt: string,
+  options?: MistralGenerateOptions
+): Promise<string> {
+  const apiKey = (process.env.MISTRAL_API_KEY || '').trim();
+  if (!apiKey) {
+    throw new Error('Mistral API key not configured (MISTRAL_API_KEY).');
+  }
+
+  const currentModelName = (process.env.MISTRAL_MODEL || 'mistral-small-latest').trim();
+  const currentMaxTokens = clampNumber(parseEnvInt('MISTRAL_MAX_TOKENS', 256), 64, 1024);
+  const currentTemperature = clampNumber(parseEnvFloat('MISTRAL_TEMPERATURE', 0.2), 0, 1);
+
+  const model = (options?.model || currentModelName).trim();
+  const temperature = clampNumber(options?.temperature ?? currentTemperature, 0, 1);
+  const maxTokens = clampNumber(options?.maxTokens ?? currentMaxTokens, 64, 2048);
+
+  const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      temperature,
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Mistral error (${res.status} ${res.statusText})${body ? `: ${body}` : ''}`);
+  }
+
+  const json = (await res.json()) as MistralChatResponse;
+  const text = json?.choices?.[0]?.message?.content;
+  if (!text) throw new Error('Empty response from Mistral');
+  return text;
+}
+
+export async function mistralGenerateText(prompt: string): Promise<string> {
+  return await mistralGenerateTextWithOptions(prompt);
+}

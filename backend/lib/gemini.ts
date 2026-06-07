@@ -1,0 +1,735 @@
+/**
+ * AI Text Generation (Gemini + Mistral fallback)
+ *
+ * Primary provider: Google Generative AI (Gemini).
+ * Fallback provider: Mistral Chat Completions API.
+ *
+ * This module provides intelligent quiz generation and feedback based on:
+ * - Student's current emotion
+ * - Student's learning style
+ * - Material content
+ * 
+ * Features:
+ * - Adaptive quiz generation
+ * - Emotion-aware prompting
+ * - Learning style personalization
+ * - Structured JSON responses
+ */
+
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { isMistralConfigured, mistralGenerateText, mistralGenerateTextWithOptions } from './mistral';
+import { isNvidiaConfigured, nvidiaGenerateText, nvidiaGenerateTextWithOptions } from './nvidia';
+
+function getGeminiApiKey(): string {
+  return (process.env.GEMINI_API_KEY || '').trim();
+}
+
+export function isGeminiConfigured(): boolean {
+  const key = getGeminiApiKey();
+  return Boolean(key && !key.startsWith('your_'));
+}
+
+function getGeminiModelName(): string {
+  return (process.env.GEMINI_MODEL || 'gemini-2.0-flash').trim();
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function parseEnvInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function parseEnvFloat(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const n = Number.parseFloat(raw);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function getGeminiModel() {
+  const key = getGeminiApiKey();
+  if (!key || key.startsWith('your_')) return null;
+  const genAI = new GoogleGenerativeAI(key);
+  const currentModelName = getGeminiModelName();
+  const maxOutputTokens = clampNumber(parseEnvInt('GEMINI_MAX_OUTPUT_TOKENS', 256), 64, 1024);
+  const temperature = clampNumber(parseEnvFloat('GEMINI_TEMPERATURE', 0.2), 0, 1);
+  return genAI.getGenerativeModel({
+    model: currentModelName,
+    generationConfig: {
+      maxOutputTokens,
+      temperature,
+      topP: 0.8,
+    },
+  });
+}
+
+type CacheEntry<T> = { value: T; expiresAt: number };
+const memoryCache = new Map<string, CacheEntry<any>>();
+const inFlight = new Map<string, Promise<any>>();
+
+let geminiCooldownUntil = 0;
+
+let geminiLock: Promise<void> = Promise.resolve();
+async function withGeminiLock<T>(fn: () => Promise<T>): Promise<T> {
+  const previous = geminiLock;
+  let release!: () => void;
+  geminiLock = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  await previous;
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function compactText(input: string, maxChars: number): string {
+  return input
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, Math.max(0, maxChars));
+}
+
+function getCache<T>(key: string): T | null {
+  const hit = memoryCache.get(key);
+  if (!hit) return null;
+  if (Date.now() > hit.expiresAt) {
+    memoryCache.delete(key);
+    return null;
+  }
+  return hit.value as T;
+}
+
+function setCache<T>(key: string, value: T, ttlMs: number): void {
+  memoryCache.set(key, { value, expiresAt: Date.now() + ttlMs });
+}
+
+function isGeminiCoolingDown(): boolean {
+  return Date.now() < geminiCooldownUntil;
+}
+
+function extractJsonObject(text: string): string {
+  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  if (cleaned.startsWith('{') && cleaned.endsWith('}')) return cleaned;
+  const first = cleaned.indexOf('{');
+  const last = cleaned.lastIndexOf('}');
+  if (first >= 0 && last > first) return cleaned.slice(first, last + 1);
+  return cleaned;
+}
+
+function normalizeQuizQuestion(input: any): QuizQuestion {
+  const question = typeof input?.question === 'string' ? input.question : String(input?.question ?? '');
+  const expectedAnswer =
+    typeof input?.expectedAnswer === 'string'
+      ? input.expectedAnswer
+      : String(input?.expectedAnswer ?? '');
+
+  const rawDifficulty = String(input?.difficulty ?? 'MEDIUM').toUpperCase();
+  const difficulty =
+    rawDifficulty === 'EASY' || rawDifficulty === 'HARD' || rawDifficulty === 'MEDIUM'
+      ? (rawDifficulty as 'EASY' | 'MEDIUM' | 'HARD')
+      : 'MEDIUM';
+
+  const hint = typeof input?.hint === 'string' ? input.hint : undefined;
+  const supportiveMessage =
+    typeof input?.supportiveMessage === 'string' ? input.supportiveMessage : undefined;
+
+  return { question, expectedAnswer, difficulty, hint, supportiveMessage };
+}
+
+function isGeminiQuotaOrRateLimitError(err: any): boolean {
+  const status = err?.status;
+  const message = String(err?.message || '');
+  return (
+    status === 429 ||
+    /\b429\b|quota exceeded|exceeded your current quota|rate limit/i.test(message)
+  );
+}
+
+async function generateContentWithRetry(prompt: string): Promise<string> {
+  const activeModel = getGeminiModel();
+  if (!activeModel) {
+    throw new Error('Gemini is not configured (missing GEMINI_API_KEY).');
+  }
+  // Minimal retry for rate limits (429). Keep small to avoid hammering.
+  const maxAttempts = 2;
+  let lastErr: unknown = null;
+
+  // Avoid very long server hangs when API returns large retryDelay (e.g. 35s).
+  // We'll still enter cooldown, but we fail fast so the caller can fall back.
+  const maxSleepMs = 1500;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const result = await activeModel.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (err: any) {
+      lastErr = err;
+      const status = err?.status;
+      const retryDelay =
+        typeof err?.errorDetails?.find === 'function'
+          ? err.errorDetails.find((d: any) => d?.retryDelay)?.retryDelay
+          : null;
+
+      if (status === 429 && attempt < maxAttempts - 1) {
+        // If API gives retryDelay like "4s", honor it.
+        const msFromRetry =
+          typeof retryDelay === 'string' && retryDelay.endsWith('s')
+            ? Number.parseFloat(retryDelay) * 1000
+            : NaN;
+        const suggestedWaitMs = Number.isFinite(msFromRetry) ? msFromRetry : 1500;
+
+        // Enter cooldown to prevent a burst of parallel calls from hammering Gemini.
+        geminiCooldownUntil = Math.max(
+          geminiCooldownUntil,
+          Date.now() + Math.max(1000, suggestedWaitMs)
+        );
+
+        // If the suggested retry is long, fail fast and let the caller fall back.
+        if (suggestedWaitMs > maxSleepMs) {
+          break;
+        }
+
+        const waitMs = Math.min(suggestedWaitMs, maxSleepMs);
+        await sleep(waitMs);
+        continue;
+      }
+
+      if (status === 429) {
+        // Cool down longer if we are hard rate-limited.
+        geminiCooldownUntil = Math.max(geminiCooldownUntil, Date.now() + 5000);
+      }
+
+      break;
+    }
+  }
+
+  throw lastErr instanceof Error ? lastErr : new Error('Gemini generateContent failed');
+}
+
+async function generateTextWithFallback(prompt: string): Promise<string> {
+  // Try Gemini first (if configured), unless we are already in cooldown.
+  if (isGeminiConfigured() && getGeminiModel() && !isGeminiCoolingDown()) {
+    try {
+      return await generateContentWithRetry(prompt);
+    } catch (err: any) {
+      // If quota/rate-limited, try Nvidia first if configured, then Mistral.
+      if (isGeminiQuotaOrRateLimitError(err)) {
+        if (isNvidiaConfigured()) {
+          try {
+            return await nvidiaGenerateText(prompt);
+          } catch (nvErr) {
+            if (isMistralConfigured()) {
+              return await mistralGenerateText(prompt);
+            }
+            throw nvErr;
+          }
+        } else if (isMistralConfigured()) {
+          return await mistralGenerateText(prompt);
+        }
+      }
+      throw err;
+    }
+  }
+
+  // If Gemini is cooling down or not configured, use Nvidia if available.
+  if (isNvidiaConfigured()) {
+    try {
+      return await nvidiaGenerateText(prompt);
+    } catch (nvErr) {
+      if (isMistralConfigured()) {
+        return await mistralGenerateText(prompt);
+      }
+      throw nvErr;
+    }
+  }
+
+  // If neither Gemini nor Nvidia is configured, use Mistral if available.
+  if (isMistralConfigured()) {
+    return await mistralGenerateText(prompt);
+  }
+
+  // Nothing else configured.
+  throw new Error('No AI provider available (Gemini, Nvidia, and Mistral are not configured).');
+}
+
+// ====================================
+// EXPORTED GENERIC GENERATION
+// ====================================
+
+/**
+ * Provider-agnostic text generation.
+ * Uses Gemini when configured, otherwise falls back to NVIDIA or Mistral if configured.
+ */
+export async function aiGenerateText(prompt: string): Promise<string> {
+  return await generateTextWithFallback(prompt);
+}
+
+export type AiGenerateOptions = {
+  maxOutputTokens?: number;
+  temperature?: number;
+};
+
+/**
+ * Provider-agnostic text generation with optional generation overrides.
+ *
+ * Notes:
+ * - Overrides are best-effort; only Gemini supports per-call maxOutputTokens.
+ * - When Gemini is cooling down, we still fall back to NVIDIA or Mistral if configured.
+ */
+export async function aiGenerateTextWithOptions(prompt: string, options?: AiGenerateOptions): Promise<string> {
+  const requestedMaxTokens = typeof options?.maxOutputTokens === 'number' ? options.maxOutputTokens : undefined;
+  const requestedTemp = typeof options?.temperature === 'number' ? options.temperature : undefined;
+
+  // If no overrides requested, keep the existing logic.
+  if (!requestedMaxTokens && requestedTemp === undefined) {
+    return await aiGenerateText(prompt);
+  }
+
+  // Gemini path (best effort)
+  if (isGeminiConfigured() && genAI && !isGeminiCoolingDown()) {
+    try {
+      const maxTokens = clampNumber(requestedMaxTokens ?? maxOutputTokens, 64, 2048);
+      const temp = clampNumber(requestedTemp ?? temperature, 0, 1);
+
+      const customModel = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          maxOutputTokens: maxTokens,
+          temperature: temp,
+          topP: 0.8,
+        },
+      });
+
+      return await withGeminiLock(async () => {
+        const result = await customModel.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+      });
+    } catch (err: any) {
+      if (isGeminiQuotaOrRateLimitError(err)) {
+        if (isNvidiaConfigured()) {
+          try {
+            return await nvidiaGenerateTextWithOptions(prompt, {
+              maxTokens: requestedMaxTokens,
+              temperature: requestedTemp,
+            });
+          } catch (nvErr) {
+            if (isMistralConfigured()) {
+              return await mistralGenerateTextWithOptions(prompt, {
+                maxTokens: requestedMaxTokens,
+                temperature: requestedTemp,
+              });
+            }
+            throw nvErr;
+          }
+        } else if (isMistralConfigured()) {
+          return await mistralGenerateTextWithOptions(prompt, {
+            maxTokens: requestedMaxTokens,
+            temperature: requestedTemp,
+          });
+        }
+      }
+      throw err;
+    }
+  }
+
+  // Nvidia path
+  if (isNvidiaConfigured()) {
+    try {
+      return await nvidiaGenerateTextWithOptions(prompt, {
+        maxTokens: requestedMaxTokens,
+        temperature: requestedTemp,
+      });
+    } catch (nvErr) {
+      if (isMistralConfigured()) {
+        return await mistralGenerateTextWithOptions(prompt, {
+          maxTokens: requestedMaxTokens,
+          temperature: requestedTemp,
+        });
+      }
+      throw nvErr;
+    }
+  }
+
+  // Fallback
+  if (isMistralConfigured()) {
+    return await mistralGenerateTextWithOptions(prompt, {
+      maxTokens: requestedMaxTokens,
+      temperature: requestedTemp,
+    });
+  }
+  throw new Error('No AI provider available (Gemini, Nvidia, and Mistral are not configured).');
+}
+
+// ====================================
+// TYPE DEFINITIONS
+// ====================================
+
+export type LearningStyle = 'VISUAL' | 'AUDITORY' | 'KINESTHETIC';
+export type EmotionType =
+  | 'Negative'
+  | 'Neutral'
+  | 'Positive';
+
+export interface QuizQuestion {
+  question: string;
+  hint?: string; // Only provided if student is struggling
+  expectedAnswer: string; // For reference only
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  supportiveMessage?: string; // Encouraging message for struggling students
+}
+
+export type QuizDifficulty = 'EASY' | 'MEDIUM' | 'HARD';
+
+export interface GenerateCalcQuestionOptions {
+  questionIndex?: number;
+  avoidQuestions?: string[];
+}
+
+export interface QuizFeedback {
+  isCorrect: boolean;
+  score: number; // 0-100
+  feedback: string; // Detailed explanation
+  encouragement: string; // Emotional support message
+  nextSteps?: string; // What to study next
+}
+
+export type QuizQuestionType = 'RECAP' | 'CALC';
+
+export interface GenerateFeedbackOptions {
+  questionType?: QuizQuestionType;
+  materialText?: string;
+}
+
+// ====================================
+// MAIN FUNCTIONS
+// ====================================
+
+/**
+ * Generate a quiz question based on material content, emotion, and learning style
+ * 
+ * @param materialText - The learning material content
+ * @param emotion - Current detected emotion
+ * @param learningStyle - Student's preferred learning style
+ * @returns Promise<QuizQuestion>
+ */
+export async function generateQuiz(
+  materialText: string,
+  emotion: EmotionType,
+  learningStyle: LearningStyle
+): Promise<QuizQuestion> {
+  try {
+    const cacheKey = `quiz:${getGeminiModelName()}:${emotion}:${learningStyle}:${compactText(materialText, 200)}`;
+    const cached = getCache<QuizQuestion>(cacheKey);
+    if (cached) return cached;
+
+    // If we're currently rate-limited and no other provider is configured, use fallback.
+    if (isGeminiCoolingDown() && !isMistralConfigured()) {
+      return {
+        question: 'Explain the concept you just learned in your own words.',
+        difficulty: 'MEDIUM',
+        expectedAnswer: 'A clear explanation of the material content.',
+        hint: emotion === 'Negative' ? 'Take your time and think about the main points.' : undefined,
+      };
+    }
+
+    // Coalesce concurrent identical requests into a single Gemini call.
+    const existing = inFlight.get(cacheKey);
+    if (existing) return (await existing) as QuizQuestion;
+
+    // Build emotion-aware context
+    const emotionContext = getEmotionContext(emotion);
+    
+    // Build learning style context
+    const styleContext = getLearningStyleContext(learningStyle);
+
+    // Construct a compact prompt to reduce token usage
+    const excerpt = compactText(materialText, 350);
+    const prompt = [
+      'You are a math tutor. Create 1 short question from the material.',
+      `MATERIAL: ${excerpt}`,
+      `EMOTION: ${emotion}.`,
+      `STYLE: ${learningStyle}.`,
+      `EMOTION_GUIDE: ${emotionContext}`,
+      `STYLE_GUIDE: ${styleContext}`,
+      'Return ONLY minified JSON (no markdown, no extra text) with keys:',
+      'question, expectedAnswer, difficulty (EASY|MEDIUM|HARD), hint (optional), supportiveMessage (optional).',
+      'Keep question and expectedAnswer very short (<= 25 words).',
+      emotion === 'Negative'
+        ? 'If EMOTION indicates struggle (Negative): include hint + supportiveMessage.'
+        : 'If not struggling: omit hint/supportiveMessage.',
+    ].join('\n');
+
+    const task = (async () => {
+      const text = await withGeminiLock(() => generateTextWithFallback(prompt));
+
+    // Parse JSON response
+      const jsonText = extractJsonObject(text);
+      const quizData = normalizeQuizQuestion(JSON.parse(jsonText));
+
+      setCache(cacheKey, quizData, 5 * 60 * 1000);
+      return quizData;
+    })();
+
+    inFlight.set(cacheKey, task);
+    try {
+      return await task;
+    } finally {
+      inFlight.delete(cacheKey);
+    }
+  } catch (error) {
+    console.error('Error generating quiz:', error);
+    
+    // Fallback question if API fails
+    return {
+      question: 'Explain the concept you just learned in your own words.',
+      difficulty: 'MEDIUM',
+      expectedAnswer: 'A clear explanation of the material content.',
+      hint: emotion === 'Negative' ? 'Take your time and think about the main points.' : undefined,
+    };
+  }
+}
+
+/**
+ * Generate a calculation-focused math question.
+ * Designed to be token-efficient and return a strictly numeric expectedAnswer.
+ */
+export async function generateCalculationQuizQuestion(
+  materialText: string,
+  emotion: EmotionType,
+  learningStyle: LearningStyle,
+  targetDifficulty: QuizDifficulty,
+  options?: GenerateCalcQuestionOptions
+): Promise<QuizQuestion> {
+  try {
+    const avoid = (options?.avoidQuestions ?? [])
+      .map((q) => q.trim())
+      .filter(Boolean)
+      .slice(0, 5);
+    const idx = options?.questionIndex;
+
+    const cacheKey = `quizcalc:${getGeminiModelName()}:${emotion}:${learningStyle}:${targetDifficulty}:${compactText(
+      materialText,
+      180
+    )}:${idx ?? 'na'}:${compactText(avoid.join(' | '), 180)}`;
+    const cached = getCache<QuizQuestion>(cacheKey);
+    if (cached) return cached;
+
+    if (isGeminiCoolingDown() && !isMistralConfigured()) {
+      return {
+        question: 'Calculate the result: 12 + 8 = ?',
+        expectedAnswer: '20',
+        difficulty: 'EASY',
+        hint: emotion === 'Negative' ? 'Take it slow.' : undefined,
+        supportiveMessage: emotion === 'Negative' ? 'You can do this.' : undefined,
+      };
+    }
+
+    const existing = inFlight.get(cacheKey);
+    if (existing) return (await existing) as QuizQuestion;
+
+    const emotionContext = getEmotionContext(emotion);
+    const styleContext = getLearningStyleContext(learningStyle);
+    const excerpt = compactText(materialText, 260);
+    const avoidLine = avoid.length ? `AVOID: ${avoid.map((q) => JSON.stringify(q)).join(',')}` : undefined;
+
+    const prompt = [
+      'Create 1 math CALCULATION question from the material.',
+      `M:${excerpt}`,
+      idx ? `IDX:${idx}` : undefined,
+      avoidLine,
+      `D:${targetDifficulty}`,
+      `E:${emotion}`,
+      `EG:${emotionContext}`,
+      `S:${learningStyle}`,
+      `SG:${styleContext}`,
+      'Return ONLY minified JSON with keys: question, expectedAnswer, difficulty, hint(optional), supportiveMessage(optional).',
+      'Rules: question must require computing a numeric final answer. expectedAnswer MUST be only the final number (no words, no units).',
+      'The question MUST be different from any in AVOID. Vary numbers/coefficients so questions are not repeated.',
+      'Keep question short (<= 25 words).',
+      emotion === 'Negative'
+        ? 'If E indicates struggle (Negative) include hint + supportiveMessage.'
+        : 'If not struggling omit hint/supportiveMessage.',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const task = (async () => {
+      const text = await withGeminiLock(() => generateTextWithFallback(prompt));
+      const jsonText = extractJsonObject(text);
+      const data = normalizeQuizQuestion(JSON.parse(jsonText));
+      setCache(cacheKey, data, 5 * 60 * 1000);
+      return data;
+    })();
+
+    inFlight.set(cacheKey, task);
+    try {
+      return await task;
+    } finally {
+      inFlight.delete(cacheKey);
+    }
+  } catch (error) {
+    console.error('Error generating calculation quiz:', error);
+    return {
+      question: 'Calculate the result: 15 × 3 = ?',
+      expectedAnswer: '45',
+      difficulty: 'EASY',
+      hint: emotion === 'Negative' ? 'Remember multiplication is repeated addition.' : undefined,
+      supportiveMessage: emotion === 'Negative' ? 'Relax, you can do this.' : undefined,
+    };
+  }
+}
+
+/**
+ * Generate feedback for a student's answer
+ * 
+ * @param question - The original question
+ * @param userAnswer - Student's answer
+ * @param expectedAnswer - The expected/correct answer
+ * @param emotion - Current detected emotion
+ * @returns Promise<QuizFeedback>
+ */
+export async function generateFeedback(
+  question: string,
+  userAnswer: string,
+  expectedAnswer: string,
+  emotion: EmotionType,
+  options?: GenerateFeedbackOptions
+): Promise<QuizFeedback> {
+  try {
+    const questionType: QuizQuestionType = options?.questionType ?? 'CALC';
+    const materialExcerpt = options?.materialText ? compactText(options.materialText, 380) : '';
+
+    const cacheKey = `feedback:${getGeminiModelName()}:${emotion}:${compactText(question, 120)}:${compactText(userAnswer, 120)}:${compactText(expectedAnswer, 120)}`;
+    const cached = getCache<QuizFeedback>(cacheKey);
+    if (cached) return cached;
+
+    const existing = inFlight.get(cacheKey);
+    if (existing) return (await existing) as QuizFeedback;
+
+    const emotionContext = getEmotionContext(emotion);
+
+    const prompt = [
+      'You are a math tutor. Grade the student answer and respond ONLY minified JSON.',
+      `EMOTION: ${emotion}. GUIDE: ${emotionContext}`,
+      `TYPE: ${questionType}.`,
+      materialExcerpt ? `MATERIAL: ${materialExcerpt}` : undefined,
+      `Q: ${compactText(question, 240)}`,
+      `EXPECTED: ${compactText(expectedAnswer, 120)}`,
+      `STUDENT: ${compactText(userAnswer, 120)}`,
+      'Rubric:',
+      '- For CALC: Check if the STUDENT answer is numerically equivalent to the EXPECTED answer. Treat "2+2", "4", "4.0" as EQUAL. If equivalent, score 100. If close (e.g. rounding error), score 70. Otherwise 0.',
+      '- For RECAP: score based on coverage of key points from MATERIAL. 100 good coverage, 70 partial, 40 minimal, 0 off-topic.',
+      '- Be lenient with formatting (spaces, units). Focus on the mathematical value/meaning.',
+      'JSON keys: isCorrect(boolean), score(number 0-100), feedback(string <=2 sentences), encouragement(string <=1 sentence).',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const task = (async () => {
+      const text = await withGeminiLock(() => generateTextWithFallback(prompt));
+      const jsonText = extractJsonObject(text);
+
+      const feedbackData = JSON.parse(jsonText) as QuizFeedback;
+
+      // Basic runtime hardening.
+      feedbackData.isCorrect = Boolean((feedbackData as any).isCorrect);
+      const rawScore = Number((feedbackData as any).score);
+      feedbackData.score = Number.isFinite(rawScore) ? clampNumber(rawScore, 0, 100) : 0;
+      feedbackData.feedback = typeof (feedbackData as any).feedback === 'string' ? (feedbackData as any).feedback : '';
+      feedbackData.encouragement =
+        typeof (feedbackData as any).encouragement === 'string' ? (feedbackData as any).encouragement : '';
+
+      if (!feedbackData.feedback) {
+        throw new Error('AI feedback JSON missing feedback');
+      }
+
+      setCache(cacheKey, feedbackData, 2 * 60 * 1000);
+      return feedbackData;
+    })();
+
+    inFlight.set(cacheKey, task);
+    try {
+      return await task;
+    } finally {
+      inFlight.delete(cacheKey);
+    }
+  } catch (error) {
+    console.error('Error generating feedback:', error);
+    
+    // Fallback feedback
+    return {
+      isCorrect: false,
+      score: 50,
+      feedback: 'Thank you for your answer. Please review the material again.',
+      encouragement: 'Keep practicing! You\'re making progress.',
+    };
+  }
+}
+
+// ====================================
+// HELPER FUNCTIONS
+// ====================================
+
+/**
+ * Get context description for current emotion
+ */
+function getEmotionContext(emotion: EmotionType): string {
+  const contexts: Record<EmotionType, string> = {
+    Negative: 'The student seems to be struggling. Be EXTRA supportive, provide hints, simplify language, and use encouraging tone.',
+    Neutral: 'The student is calm and focused. Use standard difficulty.',
+    Positive: 'The student is confident and engaged. You can challenge them slightly more.',
+  };
+
+  return contexts[emotion] || contexts.Neutral;
+}
+
+/**
+ * Get context description for learning style
+ */
+function getLearningStyleContext(style: LearningStyle): string {
+  const contexts: Record<LearningStyle, string> = {
+    VISUAL: 'This student learns best through images, diagrams, and visual representations. When possible, reference visual elements or suggest drawing/sketching.',
+    AUDITORY: 'This student learns best through verbal explanations and discussions. Use clear verbal descriptions and encourage them to explain concepts out loud.',
+    KINESTHETIC: 'This student learns best through hands-on practice and real-world examples. Use practical scenarios and encourage active problem-solving.',
+  };
+
+  return contexts[style] || contexts.VISUAL;
+}
+
+/**
+ * Generate a summary of material for easier understanding
+ * Used when student is confused or anxious
+ */
+export async function generateSimplifiedSummary(
+  materialText: string
+): Promise<string> {
+  try {
+    const prompt = [
+      'Simplify this math material for a student who is struggling (negative emotion).',
+      'Use simple language, short sentences, focus on core concepts.',
+      `Material: ${materialText.substring(0, 800)}`,
+      'Return 3 short sentences.',
+    ].join('\n');
+
+    // Use provider chain (Gemini -> Mistral) and serialize calls.
+    const text = await withGeminiLock(() => generateTextWithFallback(prompt));
+    return text;
+  } catch (error) {
+    console.error('Error generating summary:', error);
+    return 'Take a deep breath. Let\'s break this down into smaller steps. You can do this!';
+  }
+}
