@@ -563,7 +563,7 @@ Seluruh segmentasi jaringan ini dideklarasikan secara otomatis menggunakan Terra
 
 Rancangan VPC yang digunakan adalah sebagai berikut:
 * **Frontend VPC (CIDR: 10.1.0.0/16)**: Menampung EC2 frontend (subnet publik) dan menerima trafik dari Internet Gateway (Cloudflare proxy).
-* **Backend VPC (CIDR: 10.2.0.0/16)**: Menampung EC2 backend/API (subnet privat). Hanya menerima koneksi dari Frontend VPC melalui VPC Peering.
+* **Backend VPC (CIDR: 10.2.0.0/16)**: Menampung EC2 backend/API (subnet publik terkendali). Subnet ini dirancang publik untuk mendukung pengiriman kode otomatis (deploy) via SSH dari GitHub Actions, namun akses masuk port dibatasi ketat melalui Security Group.
 * **Database VPC (CIDR: 10.3.0.0/16)**: Menampung AWS RDS MySQL (subnet privat) pada dua availability zone yang berbeda demi aspek ketersediaan tinggi (High Availability).
 * **Storage Layer (Cloudflare R2)**: Bertindak sebagai Bucket/Storage layer yang terpisah dari AWS untuk memenuhi aturan Multi-Cloud.
 
@@ -599,10 +599,10 @@ Konfigurasi Security Group yang dideklarasikan di Terraform:
 
 * **Security Group Frontend (`frontend-sg`)**:
   * Ingress: Port 80 & 443 terbuka ke publik (`0.0.0.0/0`) untuk melayani HTTP/HTTPS dari Cloudflare CDN.
-  * Ingress: Port 22 untuk SSH dari IP admin.
+  * Ingress: Port 22 untuk SSH dari publik (`0.0.0.0/0`) agar Runner GitHub Actions dapat melakukan SSH deployment secara aman menggunakan SSH Key.
 * **Security Group Backend (`backend-sg`)**:
   * Ingress: Port 5000 (port kontainer backend Next.js) hanya menerima trafik yang berasal dari Security Group Frontend.
-  * Ingress: Port 22 terbatas melalui Bastion/Frontend IP.
+  * Ingress: Port 22 terbuka untuk SSH dari publik (`0.0.0.0/0`) demi kebutuhan deploy otomatis CI/CD GitHub Actions.
 * **Security Group Database (`db-sg`)**:
   * Ingress: Port 3306 (MySQL) hanya menerima trafik yang berasal dari Security Group Backend. Akses dari internet ditutup total.
 
