@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: ${DOCKER_USERNAME}/adaptive-math-frontend:latest
+    container_name: adaptive_learning_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - BACKEND_API_URL=http://${BACKEND_PRIVATE_IP}:5000
+      - AUTH_SECRET=8b9d311fa67702f2053676c8c4c795bb4f895c010d8a4ba1
+      - NEXTAUTH_SECRET=8b9d311fa67702f2053676c8c4c795bb4f895c010d8a4ba1
+      - NEXT_PUBLIC_APP_URL=https://${FRONTEND_PUBLIC_DOMAIN}
+    restart: always

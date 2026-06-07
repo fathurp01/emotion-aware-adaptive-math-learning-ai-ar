@@ -269,10 +269,10 @@ resource "aws_security_group" "backend_sg" {
   vpc_id      = aws_vpc.backend_vpc.id
 
   ingress {
-    from_port       = 5000
-    to_port         = 5000
-    protocol        = "tcp"
-    security_groups = [aws_security_group.frontend_sg.id]
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
+    cidr_blocks = ["10.1.0.0/16"] # Allow traffic from Frontend VPC
   }
 
   ingress {

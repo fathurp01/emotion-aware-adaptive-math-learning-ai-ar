@@ -77,20 +77,44 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:
-      - name: Deploy to Cloud (EC2)
+      - name: Deploy Backend to Backend EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host: ${{ secrets.EC2_BACKEND_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            mkdir -p /app/emotion-aware-adaptive-math-learning-ai-ar
             cd /app/emotion-aware-adaptive-math-learning-ai-ar
-            # Pull latest code and images
-            git pull origin cloud
-            docker compose pull
-            # Restart services
-            docker compose down
-            docker compose up -d
-            # Run database migrations/seeding
-            docker compose exec -T backend npx prisma db push
-            docker compose exec -T backend npx prisma db seed
+            if [ ! -d .git ]; then
+              git clone -b cloud https://github.com/fathurp01/emotion-aware-adaptive-math-learning-ai-ar.git .
+            else
+              git pull origin cloud
+            fi
+            export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+            docker compose -f docker-compose.backend.yml pull
+            docker compose -f docker-compose.backend.yml down
+            docker compose -f docker-compose.backend.yml up -d
+            docker compose -f docker-compose.backend.yml exec -T backend npx prisma db push
+            docker compose -f docker-compose.backend.yml exec -T backend npx prisma db seed
+
+      - name: Deploy Frontend to Frontend EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_FRONTEND_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            mkdir -p /app/emotion-aware-adaptive-math-learning-ai-ar
+            cd /app/emotion-aware-adaptive-math-learning-ai-ar
+            if [ ! -d .git ]; then
+              git clone -b cloud https://github.com/fathurp01/emotion-aware-adaptive-math-learning-ai-ar.git .
+            else
+              git pull origin cloud
+            fi
+            export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+            export BACKEND_PRIVATE_IP=${{ secrets.EC2_BACKEND_PRIVATE_IP }}
+            export FRONTEND_PUBLIC_DOMAIN=${{ secrets.FRONTEND_PUBLIC_DOMAIN }}
+            docker compose -f docker-compose.frontend.yml pull
+            docker compose -f docker-compose.frontend.yml down
+            docker compose -f docker-compose.frontend.yml up -d
