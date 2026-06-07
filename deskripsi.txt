@@ -141,3 +141,5 @@ Hasil rekomendasi dari Antigravity:
 - Pengaturan hold-time 60 detik pada penyederhanaan teks adaptif sukses menghindari perubahan visual UI yang terlalu sering (anti-flicker).
 - Sistem backup kuis LLM (NVIDIA NIM -> Gemini -> Mistral) menjamin kuis tetap dapat diakses tanpa hambatan downtime API.
 Kendala saat ini: Tidak ada kendala sistem. AWS CloudFront yang bermasalah berhasil digantikan sepenuhnya oleh Cloudflare CDN yang terhubung ke Cloudflare R2 sebagai multi-cloud storage.
+
+note
