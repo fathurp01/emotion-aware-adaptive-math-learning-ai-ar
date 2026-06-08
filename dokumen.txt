@@ -611,7 +611,7 @@ services:
     image: ${DOCKER_USERNAME}/adaptive-math-frontend:latest
     container_name: adaptive_learning_frontend
     ports:
-      - "3000:3000"
+      - "80:3000"
     environment:
       - BACKEND_API_URL=http://${BACKEND_PRIVATE_IP}:5000
       - AUTH_SECRET=8b9d311fa67702f2053676c8c4c795bb4f895c010d8a4ba1
@@ -621,7 +621,7 @@ services:
 
 [PLACEHOLDER GAMBAR 3.20: Screenshot docker compose up -d di kedua EC2]
 Gambar 3.20 Deployment Container pada AWS EC2 Terdekopel
-Berdasarkan Gambar 3.20, container frontend dan backend berhasil dijalankan secara terpisah pada masing-masing instance EC2. Frontend melayani antarmuka pengguna pada port 3000 di EC2 Frontend (IP: 13.228.24.69) dan diproksi oleh Cloudflare CDN dengan domain node-f3a17c.my.id. Sedangkan backend menjalankan REST API dan AI engine pada port 5000 di EC2 Backend (IP Privat: 10.2.1.186). Komunikasi lintas VPC berjalan aman melalui VPC Peering.
+Berdasarkan Gambar 3.20, container frontend dan backend berhasil dijalankan secara terpisah pada masing-masing instance EC2. Frontend melayani antarmuka pengguna pada port 80 di EC2 Frontend (IP: 13.228.24.69) dan diproksi oleh Cloudflare CDN dengan domain node-f3a17c.my.id. Sedangkan backend menjalankan REST API dan AI engine pada port 5000 di EC2 Backend (IP Privat: 10.2.1.186). Komunikasi lintas VPC berjalan aman melalui VPC Peering.
 
 3.19 Migrasi Database dan Seeding Data (Otomatis via CI/CD)
 Proses migrasi struktur tabel basis data (`prisma db push`) dan pengisian data awal (`prisma db seed`) dilakukan secara otomatis di dalam pipeline CI/CD GitHub Actions pada tahap deploy setelah kontainer backend berhasil dijalankan. Dengan demikian, tim pengembang tidak perlu melakukan eksekusi perintah migrasi secara manual pada server.
