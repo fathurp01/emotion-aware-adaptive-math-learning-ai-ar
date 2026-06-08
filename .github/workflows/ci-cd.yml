@@ -68,6 +68,8 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
+          build-args: |
+            BACKEND_API_URL=http://${{ secrets.EC2_BACKEND_PRIVATE_IP }}:5000
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/adaptive-math-frontend:latest
             ${{ secrets.DOCKER_USERNAME }}/adaptive-math-frontend:${{ github.sha }}
