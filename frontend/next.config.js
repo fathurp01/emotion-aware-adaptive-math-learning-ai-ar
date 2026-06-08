@@ -5,7 +5,7 @@ const nextConfig = {
     instrumentationHook: true,
   },
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', 'media.node-f3a17c.my.id'],
     remotePatterns: [
       {
         protocol: 'https',
