@@ -88,7 +88,8 @@ jobs:
       - name: Deploy Backend to Backend EC2
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_BACKEND_HOST }} 'bash -s' << 'EOF'
-            mkdir -p /app/emotion-aware-adaptive-math-learning-ai-ar
+            sudo mkdir -p /app/emotion-aware-adaptive-math-learning-ai-ar
+            sudo chown -R ubuntu:ubuntu /app/emotion-aware-adaptive-math-learning-ai-ar
             cd /app/emotion-aware-adaptive-math-learning-ai-ar
             if [ ! -d .git ]; then
               git init
@@ -109,7 +110,8 @@ jobs:
       - name: Deploy Frontend to Frontend EC2
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_FRONTEND_HOST }} 'bash -s' << 'EOF'
-            mkdir -p /app/emotion-aware-adaptive-math-learning-ai-ar
+            sudo mkdir -p /app/emotion-aware-adaptive-math-learning-ai-ar
+            sudo chown -R ubuntu:ubuntu /app/emotion-aware-adaptive-math-learning-ai-ar
             cd /app/emotion-aware-adaptive-math-learning-ai-ar
             if [ ! -d .git ]; then
               git init
