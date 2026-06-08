@@ -107,6 +107,7 @@ jobs:
             docker compose -f docker-compose.backend.yml up -d
             docker compose -f docker-compose.backend.yml exec -T backend npx prisma db push
             docker compose -f docker-compose.backend.yml exec -T backend npx prisma db seed
+            docker system prune -a -f
           EOF
 
       - name: Deploy Frontend to Frontend EC2
@@ -129,4 +130,5 @@ jobs:
             docker compose -f docker-compose.frontend.yml pull
             docker compose -f docker-compose.frontend.yml down
             docker compose -f docker-compose.frontend.yml up -d
+            docker system prune -a -f
           EOF
