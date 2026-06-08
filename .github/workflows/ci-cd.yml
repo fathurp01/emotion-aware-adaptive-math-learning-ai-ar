@@ -87,7 +87,10 @@ jobs:
             mkdir -p /app/emotion-aware-adaptive-math-learning-ai-ar
             cd /app/emotion-aware-adaptive-math-learning-ai-ar
             if [ ! -d .git ]; then
-              git clone -b cloud https://github.com/fathurp01/emotion-aware-adaptive-math-learning-ai-ar.git .
+              git init
+              git remote add origin https://github.com/fathurp01/emotion-aware-adaptive-math-learning-ai-ar.git
+              git fetch origin cloud
+              git checkout -f -B cloud origin/cloud
             else
               git pull origin cloud
             fi
@@ -108,7 +111,10 @@ jobs:
             mkdir -p /app/emotion-aware-adaptive-math-learning-ai-ar
             cd /app/emotion-aware-adaptive-math-learning-ai-ar
             if [ ! -d .git ]; then
-              git clone -b cloud https://github.com/fathurp01/emotion-aware-adaptive-math-learning-ai-ar.git .
+              git init
+              git remote add origin https://github.com/fathurp01/emotion-aware-adaptive-math-learning-ai-ar.git
+              git fetch origin cloud
+              git checkout -f -B cloud origin/cloud
             else
               git pull origin cloud
             fi
