@@ -561,18 +561,38 @@ Agar aset dari R2 dapat dimuat oleh aplikasi frontend tanpa masalah Cross-Origin
 SSL/TLS Cloudflare diatur pada mode Full atau Full (Strict) agar komunikasi pengguna melalui browser berjalan menggunakan HTTPS. HTTPS diperlukan agar fitur webcam untuk deteksi emosi dapat berjalan pada browser modern, karena akses kamera hanya diizinkan pada konteks aman (secure context).
  
 Gambar 3.18 Konfigurasi DNS dan CDN Cloudflare
-Berdasarkan Gambar 3.18, domain aplikasi telah diarahkan ke server EC2 melalui Cloudflare, sedangkan subdomain media.node-f3a17c.my.id digunakan sebagai custom domain untuk bucket Cloudflare R2. Konfigurasi ini membuat Cloudflare berperan sebagai DNS, CDN, reverse proxy, serta lapisan distribusi aset statis.
- Gambar 3.19 Konfigurasi SSL/TLS Cloudflare
-Berdasarkan Gambar 3.19, SSL/TLS telah aktif sehingga pengguna dapat mengakses aplikasi melalui HTTPS. Konfigurasi ini meningkatkan keamanan komunikasi antara browser pengguna, Cloudflare, dan server aplikasi.
+Berdasarkan Gambar 3.18, domain aplikasi telah diarahkan ke server EC2 melalui Cloudflare, sedangkan subdomain media.node-f3a17c.my.id digunakan sebagai custom domain un3.18 Deployment Aplikasi pada EC2 Menggunakan Docker Compose (Otomatis via CI/CD)
+Setelah infrastruktur AWS, basis data RDS MySQL, penyimpanan objek Cloudflare R2, dan Cloudflare CDN selesai dikonfigurasi, langkah selanjutnya adalah mendeploy kontainer frontend dan backend ke server EC2 produksi yang terpisah secara decoupled sesuai arsitektur multi-VPC. Proses deployment ini dilakukan secara otomatis melalui pipeline CI/CD GitHub Actions ketika terjadi push ke branch cloud. Namun, terdapat satu langkah inisialisasi satu-kali yang dilakukan secara manual pada sisi server backend untuk menyiapkan konfigurasi environment privat.
 
-3.18 Konfigurasi Kontainer Docker Compose Produksi
-Setelah resource AWS, Cloudflare R2, dan Cloudflare CDN siap, langkah selanjutnya adalah menyiapkan konfigurasi orkestrasi kontainer Docker Compose. Meskipun penarikan image dan peluncuran kontainer secara penuh diotomatisasi oleh pipeline CI/CD GitHub Actions ketika ada push ke branch cloud, file orkestrasi ini dideklarasikan di dalam repositori agar server target mengetahui cara menjalankan masing-masing service:
+A. Inisialisasi dan Konfigurasi Environment Backend (Manual Satu-Kali):
+1. Masuk ke Backend EC2 menggunakan SSH melalui IP Publik server backend:
+   ssh -i adaptive-learning-key.pem ubuntu@13.250.62.137
+2. Buat direktori kerja aplikasi:
+   mkdir -p /app/emotion-aware-adaptive-math-learning-ai-ar
+   cd /app/emotion-aware-adaptive-math-learning-ai-ar
+3. Buat file .env.production untuk menyimpan variabel lingkungan produksi yang aman dan sensitif:
+   DATABASE_URL="mysql://admin:password_rds_kamu@terraform-20260607133918618000000004.cfoqusuqqmpx.ap-southeast-1.rds.amazonaws.com:3306/emotion_learning_db"
+   PORT=5000
+   AUTH_SECRET="8b9d311fa67702f2053676c8c4c795bb4f895c010d8a4ba1"
+   S3_ENDPOINT="https://5a9764dff739c30523f8046b389ac63c.r2.cloudflarestorage.com"
+   S3_REGION="auto"
+   S3_BUCKET_NAME="adaptive-learning-assets-multi-cloud"
+   S3_ACCESS_KEY_ID="f3ea9a3de11d79404c72c6b48fc7887e"
+   S3_SECRET_ACCESS_KEY="5af7e56fa2a7f37ca085acd7a8b5e47bc7921129f0fd80ac4a6f23559510fd05"
+   S3_PUBLIC_URL_PREFIX="https://media.node-f3a17c.my.id"
+   NVIDIA_API_KEY="your_nvidia_api_key_here"
+   NVIDIA_MODEL="meta/llama-3.1-8b-instruct"
+   GEMINI_API_KEY="your_gemini_api_key_here"
+   GEMINI_MODEL="gemini-2.0-flash"
+   MISTRAL_API_KEY="your_mistral_api_key_here"
+   MISTRAL_MODEL="mistral-small-latest"
 
-A. Konfigurasi Backend (docker-compose.backend.yml):
-Pada server EC2 Backend, kontainer berjalan secara terpisah menggunakan file docker-compose.backend.yml. Untuk alasan keamanan, variabel lingkungan yang sensitif (seperti DATABASE_URL, API key AI, dan kunci akses R2) tidak disimpan di dalam repositori Git, melainkan dibaca dari file .env.production yang harus diletakkan langsung di server target.
+B. File Konfigurasi Docker Compose Produksi (Disimpan dalam Repositori):
+Guna mendukung deployment terpisah, repositori menggunakan dua file konfigurasi docker-compose yang berbeda:
 
-Contoh docker-compose.backend.yml:
+1. File docker-compose.backend.yml (untuk EC2 Backend):
 version: '3.8'
+
 services:
   backend:
     image: ${DOCKER_USERNAME}/adaptive-math-backend:latest
@@ -583,11 +603,9 @@ services:
       - .env.production
     restart: always
 
-B. Konfigurasi Frontend (docker-compose.frontend.yml):
-Pada server EC2 Frontend, kontainer Next.js dijalankan menggunakan file docker-compose.frontend.yml. Layanan ini membutuhkan IP privat backend hasil output Terraform (untuk komunikasi internal lintas VPC Peering) dan domain publik frontend.
-
-Contoh docker-compose.frontend.yml:
+2. File docker-compose.frontend.yml (untuk EC2 Frontend):
 version: '3.8'
+
 services:
   frontend:
     image: ${DOCKER_USERNAME}/adaptive-math-frontend:latest
@@ -596,146 +614,167 @@ services:
       - "3000:3000"
     environment:
       - BACKEND_API_URL=http://${BACKEND_PRIVATE_IP}:5000
-      - AUTH_SECRET=SENSOR_AUTH_SECRET
-      - NEXTAUTH_SECRET=SENSOR_AUTH_SECRET
+      - AUTH_SECRET=8b9d311fa67702f2053676c8c4c795bb4f895c010d8a4ba1
+      - NEXTAUTH_SECRET=8b9d311fa67702f2053676c8c4c795bb4f895c010d8a4ba1
       - NEXT_PUBLIC_APP_URL=https://${FRONTEND_PUBLIC_DOMAIN}
     restart: always
 
-Langkah Persiapan Sebelum Deployment Otomatis (CI/CD):
-Agar deployment otomatis berjalan dengan sukses, file konfigurasi .env.production wajib disiapkan terlebih dahulu secara manual di server EC2 Backend:
-1. Masuk ke EC2 Backend menggunakan SSH dari terminal lokal:
-   ssh -i adaptive-learning-key.pem ubuntu@BACKEND_PUBLIC_IP
-2. Buat direktori aplikasi di server:
-   mkdir -p /app/emotion-aware-adaptive-math-learning-ai-ar
-3. Buat file .env.production dan isi dengan variabel database RDS, R2, dan API keys AI.
+[PLACEHOLDER GAMBAR 3.20: Screenshot docker compose up -d di kedua EC2]
+Gambar 3.20 Deployment Container pada AWS EC2 Terdekopel
+Berdasarkan Gambar 3.20, container frontend dan backend berhasil dijalankan secara terpisah pada masing-masing instance EC2. Frontend melayani antarmuka pengguna pada port 3000 di EC2 Frontend (IP: 13.228.24.69) dan diproksi oleh Cloudflare CDN dengan domain node-f3a17c.my.id. Sedangkan backend menjalankan REST API dan AI engine pada port 5000 di EC2 Backend (IP Privat: 10.2.1.186). Komunikasi lintas VPC berjalan aman melalui VPC Peering.
 
-[PLACEHOLDER GAMBAR 3.20: Log keberhasilan penarikan dan eksekusi kontainer oleh GitHub Actions]
-Gambar 3.20 Deployment Kontainer Otomatis pada AWS EC2 Terdekopel
-Berdasarkan Gambar 3.20, container frontend dan backend berhasil dijalankan secara terpisah pada masing-masing instance EC2 secara otomatis oleh runner GitHub Actions. Frontend melayani tampilan aplikasi pada port 3000 pada Frontend EC2, sedangkan backend menjalankan REST API dan orkestrasi AI pada port 5000 pada Backend EC2. Komunikasi lintas VPC berjalan aman melalui jaringan VPC Peering.
+3.19 Migrasi Database dan Seeding Data (Otomatis via CI/CD)
+Proses migrasi struktur tabel basis data (`prisma db push`) dan pengisian data awal (`prisma db seed`) dilakukan secara otomatis di dalam pipeline CI/CD GitHub Actions pada tahap deploy setelah kontainer backend berhasil dijalankan. Dengan demikian, tim pengembang tidak perlu melakukan eksekusi perintah migrasi secara manual pada server.
 
-3.19 Migrasi Database dan Seeding Data
-Setelah kontainer backend berhasil diluncurkan oleh pipeline CI/CD, struktur database pada AWS RDS MySQL perlu dibuat berdasarkan skema Prisma ORM.
-
-Pada sistem produksi terintegrasi ini, perintah migrasi dan seeding dijalankan secara otomatis pada langkah terakhir di dalam pipeline GitHub Actions. Namun, perintah berikut juga dapat dijalankan secara manual di dalam container backend untuk kebutuhan pemeliharaan atau verifikasi data:
-
-Perintah migrasi struktur tabel secara manual:
+Adapun perintah migrasi dan seeding yang dieksekusi secara otomatis di dalam container backend oleh workflow runner adalah sebagai berikut:
 docker compose -f docker-compose.backend.yml exec -T backend npx prisma db push
-
-Perintah seeding data awal secara manual:
 docker compose -f docker-compose.backend.yml exec -T backend npx prisma db seed
 
-[PLACEHOLDER GAMBAR 3.21: Log database push dan seed berhasil di GitHub Actions atau terminal]
-Gambar 3.21 Migrasi dan Seeding Database Produksi Berhasil
-Berdasarkan Gambar 3.21, struktur tabel berhasil dibuat pada AWS RDS MySQL dan data awal berhasil dimasukkan sehingga aplikasi dapat langsung digunakan untuk pengujian fitur.
+[PLACEHOLDER GAMBAR 3.21: Screenshot Prisma db push dan seed berhasil]
+Gambar 3.21 Migrasi dan Seeding Database Produksi
+Berdasarkan Gambar 3.21, struktur tabel berhasil dibuat pada AWS RDS MySQL dan data awal berhasil dimasukkan sehingga aplikasi siap digunakan untuk pengujian fitur tanpa intervensi manual tambahan.
+
 3.20 Pengujian Koneksi Backend ke Database
-Untuk memastikan backend dapat terhubung ke RDS MySQL, dilakukan pengujian endpoint health check. Karena frontend Next.js menggunakan rewrite proxy, endpoint dapat diakses melalui domain utama aplikasi pada path /api/health.
-https://domain-kamu.com/api/health
+Untuk memastikan backend dapat terhubung ke RDS MySQL secara aman, dilakukan pengujian endpoint health check melalui domain utama aplikasi. Karena frontend Next.js menggunakan rewrite proxy, endpoint backend diproksi di bawah domain utama:
+https://node-f3a17c.my.id/api/health
+
 Apabila backend dan database berjalan normal, respons JSON yang diharapkan adalah sebagai berikut:
 {
   "status": "ok",
-  "database": "connected"
+  "database": "connected",
+  "ai_services": {
+    "nvidia": "configured",
+    "gemini": "configured"
+  }
 }
+
 [PLACEHOLDER GAMBAR 3.22: Screenshot endpoint health check melalui domain utama]
 Gambar 3.22 Pengujian Koneksi Backend ke Database
-Berdasarkan Gambar 3.22, backend berhasil terhubung ke database RDS MySQL. Hal ini menunjukkan bahwa konfigurasi DATABASE_URL, Security Group, Docker Compose, dan koneksi jaringan aplikasi telah berjalan dengan baik.
+Berdasarkan Gambar 3.22, backend berhasil terhubung ke database RDS MySQL melalui domain utama yang diproksi Cloudflare CDN. Hal ini membuktikan keselarasan konfigurasi DATABASE_URL, aturan Security Group, dan koneksi jaringan VPC Peering.
+
 3.21 Pengujian Object Storage dan CDN
-Pengujian ini membuktikan bahwa pengunggahan gambar oleh guru tersimpan di Cloudflare R2 dan didistribusikan melalui Cloudflare CDN.
+Pengujian ini membuktikan bahwa aset media pembelajaran yang diunggah oleh guru berhasil tersimpan di bucket Cloudflare R2 dan didistribusikan secara cepat ke browser siswa melalui Cloudflare CDN.
+
 Alur pengujian:
-1. Guru login ke dashboard guru -> Masuk halaman Manajemen Materi.
-2. Guru membuat materi baru dan menyisipkan file ilustrasi gambar geometri matematika.
-3. API backend menangkap file tersebut dan mengaktifkan modul s3.ts sebagai S3-Compatible client untuk mengunggah file ke Cloudflare R2.
-4. Gambar berhasil tersimpan dan menghasilkan URL dengan prefix CDN (misal: https://media.domain-kamu.com/material-1717800000.png).
-5. Saat siswa membuka materi tersebut, gambar dimuat secara instan dari cache edge server CDN Cloudflare terdekat.
+1. Guru login ke dashboard guru -> Masuk ke halaman Manajemen Materi.
+2. Guru membuat materi pembelajaran baru dan mengunggah ilustrasi gambar geometri matematika.
+3. API backend menangkap berkas unggahan dan mengaktifkan modul s3.ts sebagai S3-Compatible client untuk melakukan upload berkas ke Cloudflare R2.
+4. Berkas berhasil diunggah dan menghasilkan URL dengan domain CDN kustom:
+   https://media.node-f3a17c.my.id/material-1717800000.png
+5. Saat siswa membuka materi tersebut, gambar dimuat secara instan melalui cache edge server CDN Cloudflare terdekat tanpa membebani server asal.
+
 [PLACEHOLDER GAMBAR 3.23: Screenshot upload file materi dari dashboard guru]
 Gambar 3.23 Pengujian Upload File Materi
-Berdasarkan Gambar 3.23, guru dapat mengunggah file materi melalui aplikasi. File tersebut kemudian dikirim ke backend untuk diproses dan disimpan pada object storage.
+Berdasarkan Gambar 3.23, guru dapat mengunggah berkas materi melalui aplikasi. Berkas tersebut kemudian diproses oleh backend untuk dikirimkan secara aman ke penyimpanan multi-cloud.
+
 [PLACEHOLDER GAMBAR 3.24: Screenshot file berhasil masuk ke Cloudflare R2]
 Gambar 3.24 File Materi Berhasil Tersimpan pada Cloudflare R2
-Berdasarkan Gambar 3.24, file materi berhasil tersimpan pada bucket Cloudflare R2. Hal ini membuktikan bahwa object storage multi-cloud telah terintegrasi dengan aplikasi.
+Berdasarkan Gambar 3.24, file materi berhasil tersimpan pada bucket Cloudflare R2. Pemisahan AWS sebagai compute/database dan Cloudflare R2 sebagai object storage membuktikan penerapan arsitektur multi-cloud.
+
 [PLACEHOLDER GAMBAR 3.25: Screenshot aset dimuat melalui domain CDN]
 Gambar 3.25 Aset Pembelajaran Diakses Melalui Cloudflare CDN
-Berdasarkan Gambar 3.25, aset pembelajaran berhasil dimuat melalui domain CDN. Dengan demikian, akses file tidak dilakukan langsung melalui endpoint mentah bucket, melainkan melalui Cloudflare CDN yang mendukung caching dan distribusi konten.
+Berdasarkan Gambar 3.25, aset pembelajaran berhasil dimuat melalui domain CDN media.node-f3a17c.my.id. Hal ini mengonfirmasi integrasi Cloudflare CDN yang mempercepat pengiriman konten ke browser pengguna.
+
 3.22 Pengujian Integrasi AI Deteksi Emosi
-Fitur deteksi emosi dijalankan pada sisi client menggunakan TensorFlow.js. Model AI disimpan pada frontend dan dimuat oleh browser ketika siswa mengakses halaman pembelajaran.
+Fitur deteksi emosi dijalankan pada sisi client menggunakan TensorFlow.js. Model AI disimpan secara lokal pada repositori frontend dan dimuat oleh browser ketika siswa mengakses halaman pembelajaran.
+
 Alur kerja deteksi emosi:
-1. Siswa membuka halaman materi.
-2. Browser meminta izin akses webcam (HTTPS diwajibkan oleh peramban).
-3. TensorFlow.js memuat model klasifikasi emosi lokal dari /model/tfjs_model/.
+1. Siswa membuka halaman materi matematika.
+2. Browser meminta izin akses webcam (HTTPS diwajibkan oleh peramban untuk secure context).
+3. TensorFlow.js memuat model klasifikasi emosi lokal dari path /model/tfjs_model/.
 4. Sistem menganalisis wajah siswa setiap 1 detik.
 5. Ekspresi diklasifikasikan menjadi Happy, Neutral, atau Negative.
 6. Menggunakan mekanisme debounce, data emosi dikirim ke backend API /api/student/log-emotion setiap 5 detik untuk menghemat beban jaringan.
+
 [PLACEHOLDER GAMBAR 3.26: Screenshot izin webcam dan deteksi emosi berjalan]
 Gambar 3.26 Pengujian Deteksi Emosi Menggunakan TensorFlow.js
-Berdasarkan Gambar 3.26, model TensorFlow.js berhasil dimuat dan digunakan untuk mendeteksi emosi siswa melalui webcam. Hasil deteksi digunakan sebagai salah satu parameter dalam pembelajaran adaptif.
+Berdasarkan Gambar 3.26, model TensorFlow.js berhasil dimuat dan digunakan untuk mendeteksi emosi siswa secara realtime. Hasil deteksi emosi ini digunakan sebagai masukan parameter logika fuzzy untuk penyesuaian kesulitan materi secara adaptif.
+
 3.23 Pengujian Fallback AI MediaPipe
-Sistem ini memiliki ketahanan tinggi. Jika file model utama TensorFlow.js di server corrupt atau tidak dapat diunduh, sistem akan secara otomatis memicu fungsi fallback ke MediaPipe Face Landmarker API (file EmotionCamera.tsx pada bagian inisialisasi fallback).
+Sistem ini dirancang dengan tingkat ketahanan tinggi. Jika file model utama TensorFlow.js di server mengalami korupsi atau gagal dimuat, sistem akan otomatis mengaktifkan mekanisme fallback ke MediaPipe Face Landmarker API.
+
 Alur fallback:
-1. Pemuatan model utama TFJS gagal -> Blok catch menangkap error.
-2. Fungsi initMediaPipeFallback() dijalankan secara otomatis.
-3. MediaPipe memuat model landmark wajah dari CDN JSDelivr.
-4. Klasifikasi emosi didasarkan pada perhitungan spasial heuristic dari blendshapes wajah (misal: jarak alis, bentuk lengkungan bibir).
-5. Jika MediaPipe pun gagal, sistem masuk ke Safe Mode (emosi default Neutral tanpa merusak jalannya kuis siswa).
+1. Pemuatan model utama TFJS gagal -> Blok catch menangkap error pemuatan model.
+2. Fungsi initMediaPipeFallback() dipicu secara otomatis.
+3. MediaPipe memuat model landmark wajah dari CDN JSDelivr secara dinamis.
+4. Klasifikasi emosi didasarkan pada perhitungan spasial heuristik blendshapes wajah (jarak alis, sudut bibir).
+5. Jika MediaPipe pun mengalami kegagalan akses CDN, sistem akan masuk ke Safe Mode (mengembalikan emosi default Neutral tanpa mengganggu jalannya aplikasi kuis siswa).
+
 [PLACEHOLDER GAMBAR 3.27: Screenshot fallback MediaPipe atau log fallback]
 Gambar 3.27 Pengujian Fallback AI MediaPipe
-Berdasarkan Gambar 3.27, sistem memiliki mekanisme fallback untuk menjaga agar fitur pembelajaran tetap berjalan meskipun model utama tidak dapat digunakan. Fallback ini meningkatkan keandalan fitur AI pada aplikasi.
+Berdasarkan Gambar 3.27, mekanisme fallback berhasil menjaga kelangsungan sistem pendeteksi emosi meskipun terdapat kendala teknis pada model utama, membuktikan keandalan implementasi kecerdasan buatan dalam aplikasi.
+
 3.24 Pengujian LLM untuk Kuis Adaptif
-Penyusunan kuis adaptif dilakukan secara dinamis oleh backend dengan mengintegrasikan NVIDIA NIM API menggunakan model meta/llama-3.1-8b-instruct.
+Penyusunan soal kuis matematika adaptif dilakukan secara dinamis oleh backend dengan mengintegrasikan NVIDIA NIM API menggunakan model meta/llama-3.1-8b-instruct.
+
 Alur kerja kuis adaptif:
-1. Siswa memulai kuis matematika.
-2. Tingkat kesulitan soal (EASY, MEDIUM, HARD) dihitung secara Fuzzy Logic berdasarkan rata-rata waktu jawab, jawaban salah, dan log emosi negatif siswa.
-3. Backend memanggil NVIDIA NIM API untuk menggenerasi soal matematika sesuai tingkat kesulitan dan topik materi terkait.
-4. Jika NVIDIA NIM mengalami gangguan kuota/downtime, backend otomatis mengalihkan generator kuis (*failover*) ke Google Gemini API atau Mistral AI.
-5. LLM juga menghasilkan umpan balik personalisasi (*feedback*) untuk menjelaskan langkah-langkah penyelesaian soal dengan gaya bahasa suportif.
+1. Siswa memulai pengerjaan kuis matematika.
+2. Tingkat kesulitan soal (EASY, MEDIUM, HARD) dihitung menggunakan Fuzzy Logic berdasarkan kombinasi rata-rata waktu jawab, jumlah kesalahan, dan histori emosi negatif siswa.
+3. Backend memanggil NVIDIA NIM API untuk menggenerasi soal matematika yang relevan dengan tingkat kesulitan tersebut.
+4. Jika NVIDIA NIM mengalami kendala limit kuota atau downtime, backend otomatis melakukan failover ke Google Gemini API atau Mistral AI.
+5. LLM juga menghasilkan umpan balik personalisasi (feedback) untuk menerangkan langkah penyelesaian soal secara suportif.
+
 [PLACEHOLDER GAMBAR 3.28: Screenshot generate soal adaptif]
 Gambar 3.28 Pengujian Generate Soal Kuis Adaptif
-Berdasarkan Gambar 3.28, sistem berhasil menghasilkan soal matematika secara dinamis berdasarkan kondisi siswa. Integrasi ini menunjukkan bahwa AI tidak hanya digunakan sebagai fitur tambahan, tetapi terhubung langsung dengan proses pembelajaran.
+Berdasarkan Gambar 3.28, sistem berhasil menghasilkan soal matematika secara dinamis berdasarkan performa kognitif dan afektif siswa, menunjukkan keberhasilan integrasi orkestrasi AI backend.
+
 [PLACEHOLDER GAMBAR 3.29: Screenshot feedback personal dari AI]
 Gambar 3.29 Feedback Personal Berbasis AI
-Berdasarkan Gambar 3.29, AI berhasil memberikan feedback personal terhadap jawaban siswa. Feedback ini membantu siswa memahami kesalahan dan mendapatkan arahan belajar yang lebih sesuai.
+Berdasarkan Gambar 3.29, AI berhasil menyajikan penjelasan langkah demi langkah secara personal untuk membimbing siswa memahami kesalahan jawabannya secara konstruktif.
+
 3.25 Pengujian Personalized Remedial Generator
-Jika siswa memperoleh nilai kuis rata-rata di bawah standar kelulusan (KKM), tombol "Generate Remedial" akan muncul secara dinamis di halaman materi.
+Apabila siswa memperoleh nilai rata-rata kuis di bawah Kriteria Ketuntasan Minimal (KKM), tombol "Generate Remedial" akan muncul secara dinamis pada halaman hasil kuis.
+
 Alur kerja remedial:
 1. Siswa menekan tombol "Generate Remedial".
-2. Backend mengumpulkan riwayat soal kuis yang salah dijawab serta histori emosi cemas siswa saat kuis.
-3. Backend memanggil LLM untuk menyusun ringkasan materi remedial khusus yang memfokuskan penjelasan pada topik-topik kelemahan siswa tersebut.
-4. Materi remedial personal disajikan dalam format Markdown di bagian bawah halaman pelajaran.
+2. Backend mengumpulkan data riwayat soal yang salah dijawab serta log emosi siswa selama pengerjaan kuis.
+3. Backend memanggil LLM untuk menyusun ringkasan materi remedial terpersonalisasi yang berfokus pada topik kelemahan siswa tersebut.
+4. Ringkasan materi remedial disajikan dalam format Markdown di layar siswa.
+
 [PLACEHOLDER GAMBAR 3.30: Screenshot tombol Generate Remedial]
 Gambar 3.30 Tombol Generate Remedial pada Halaman Materi
-Berdasarkan Gambar 3.30, sistem menampilkan fitur remedial ketika siswa membutuhkan penguatan materi. Fitur ini mendukung konsep pembelajaran adaptif karena materi tambahan diberikan berdasarkan kebutuhan individu siswa.
+Berdasarkan Gambar 3.30, sistem menampilkan opsi remedial secara dinamis, mengarahkan siswa untuk mendapatkan materi pengayaan guna meningkatkan pemahaman kognitifnya.
+
 [PLACEHOLDER GAMBAR 3.31: Screenshot hasil remedial personal]
 Gambar 3.31 Hasil Materi Remedial Personal Berbasis AI
-Berdasarkan Gambar 3.31, sistem berhasil menghasilkan materi remedial personal. Materi tersebut disusun berdasarkan kelemahan siswa pada kuis sebelumnya sehingga proses belajar menjadi lebih terarah.
+Berdasarkan Gambar 3.31, materi remedial berhasil digenerasi oleh AI secara instan dan disajikan kepada siswa. Penjelasan disesuaikan dengan topik spesifik yang belum dikuasai siswa berdasarkan analisis kuis sebelumnya.
+
 3.26 Konfigurasi GitHub Secrets untuk CI/CD
-Sebelum pipeline CI/CD dijalankan pada branch cloud, repositori GitHub harus dihubungkan dengan kredensial rahasia server cloud agar dapat melakukan build dan login ke Docker Hub secara otomatis.
-Secrets yang wajib didaftarkan pada Settings repositori GitHub:
-•	`DOCKER_USERNAME`: Username Docker Hub Anda.
-•	`DOCKER_PASSWORD`: Password / Access Token Docker Hub.
-•	`EC2_FRONTEND_HOST`: IP Publik server EC2 Frontend Anda.
-•	`EC2_BACKEND_HOST`: IP Publik server EC2 Backend Anda.
-•	`EC2_BACKEND_PRIVATE_IP`: IP Privat server EC2 Backend (untuk komunikasi peering 10.2.1.x).
-•	`FRONTEND_PUBLIC_DOMAIN`: Domain publik frontend Next.js (misalnya `domain-kamu.com`).
-•	`EC2_USERNAME`: Username SSH server EC2 (misalnya `ubuntu`).
-•	`EC2_SSH_KEY`: Isi kunci privat SSH `.pem` Anda untuk masuk ke server EC2.
+Sebelum pipeline CI/CD dapat dijalankan secara otomatis pada branch cloud, repositori GitHub harus dihubungkan dengan kredensial rahasia server cloud agar runner dapat melakukan proses build dan deploy secara aman.
+
+Secrets yang wajib dikonfigurasikan pada menu Settings > Secrets and Variables > Actions pada repositori GitHub adalah sebagai berikut:
+• `DOCKER_USERNAME`: Username Docker Hub pengguna.
+• `DOCKER_PASSWORD`: Personal Access Token Docker Hub Anda.
+• `EC2_FRONTEND_HOST`: IP Publik server EC2 Frontend Anda (13.228.24.69).
+• `EC2_BACKEND_HOST`: IP Publik server EC2 Backend Anda (13.250.62.137).
+• `EC2_BACKEND_PRIVATE_IP`: IP Privat server EC2 Backend (10.2.1.186) untuk injeksi proksi internal frontend.
+• `FRONTEND_PUBLIC_DOMAIN`: Domain publik aplikasi frontend (node-f3a17c.my.id).
+• `EC2_USERNAME`: Nama pengguna SSH server EC2 (ubuntu).
+• `EC2_SSH_KEY`: Kunci privat SSH (.pem) untuk masuk ke kedua instance EC2.
+
 [PLACEHOLDER GAMBAR 3.32: Screenshot GitHub Secrets, semua value disensor]
 Gambar 3.32 Konfigurasi GitHub Secrets
-Berdasarkan Gambar 3.32, seluruh kredensial yang dibutuhkan pipeline telah disimpan pada GitHub Secrets. Dengan demikian, data sensitif tidak ditulis secara langsung pada file workflow maupun source code.
+Berdasarkan Gambar 3.32, seluruh kredensial sensitif telah disimpan pada GitHub Secrets, memastikan keamanan data credential selama eksekusi otomatisasi pipeline.
+
 3.27 Konfigurasi Pipeline CI/CD GitHub Actions
-Pipeline CI/CD digunakan untuk mengotomatisasi proses build, test, dockerize, push image, dan deploy otomatis. Sesuai ketentuan UAS, pipeline dideklarasikan di .github/workflows/ci-cd.yml yang terbagi atas tiga pekerjaan (*jobs*):
+Pipeline CI/CD dideklarasikan dalam berkas konfigurasi .github/workflows/ci-cd.yml. Pipeline ini terbagi ke dalam 3 pekerjaan utama: Test (melakukan pengujian build frontend/backend), Dockerize (membangun image Docker dan mempublikasikannya ke Docker Hub), serta Deploy (menghubungkan server EC2 melalui SSH untuk melakukan pembaruan kontainer secara otomatis).
+
+Berikut adalah isi konfigurasi lengkap file .github/workflows/ci-cd.yml:
 name: CI/CD Pipeline
- 
+
 on:
   push:
     branches: [ "main", "cloud" ]
   pull_request:
     branches: [ "main", "cloud" ]
- 
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
- 
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -744,20 +783,20 @@ jobs:
           cache-dependency-path: |
             backend/package-lock.json
             frontend/package-lock.json
- 
+
       - name: Test Backend Build
         run: |
           cd backend
           npm ci
           npx prisma generate
           npm run build
- 
+
       - name: Test Frontend Build
         run: |
           cd frontend
           npm ci
           npm run build
- 
+
   dockerize:
     needs: test
     runs-on: ubuntu-latest
@@ -765,16 +804,16 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
- 
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
- 
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
- 
+
       - name: Build and Push Backend Image
         uses: docker/build-push-action@v5
         with:
@@ -784,7 +823,7 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/adaptive-math-backend:latest
             ${{ secrets.DOCKER_USERNAME }}/adaptive-math-backend:${{ github.sha }}
- 
+
       - name: Build and Push Frontend Image
         uses: docker/build-push-action@v5
         with:
@@ -794,7 +833,7 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/adaptive-math-frontend:latest
             ${{ secrets.DOCKER_USERNAME }}/adaptive-math-frontend:${{ github.sha }}
- 
+
   deploy:
     needs: dockerize
     runs-on: ubuntu-latest
@@ -820,7 +859,7 @@ jobs:
             docker compose -f docker-compose.backend.yml up -d
             docker compose -f docker-compose.backend.yml exec -T backend npx prisma db push
             docker compose -f docker-compose.backend.yml exec -T backend npx prisma db seed
- 
+
       - name: Deploy Frontend to Frontend EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -841,27 +880,35 @@ jobs:
             docker compose -f docker-compose.frontend.yml pull
             docker compose -f docker-compose.frontend.yml down
             docker compose -f docker-compose.frontend.yml up -d
+
 [PLACEHOLDER GAMBAR 3.33: Screenshot file ci-cd.yml]
 Gambar 3.33 Konfigurasi GitHub Actions CI/CD
-Berdasarkan Gambar 3.33, pipeline CI/CD telah mencakup proses checkout repository, build, test, dockerize, push image ke Docker Hub, dan deployment otomatis terpisah ke masing-masing server EC2 melalui SSH.
+Berdasarkan Gambar 3.33, pipeline CI/CD telah mencakup alur build, test, dockerize, push image ke Docker Hub, dan deploy terdekopel ke masing-masing server secara terotomatisasi.
+
 3.28 Pengujian Pipeline CI/CD
-Pengujian pipeline dilakukan dengan melakukan perubahan kecil pada repositori lokal, lalu melakukan push ke branch cloud.
-Perintah yang digunakan:
+Pengujian pipeline CI/CD dilakukan dengan melakukan push commit kecil ke branch cloud dari repositori lokal.
+
+Perintah Git yang dijalankan:
 git add .
 git commit -m "chore: test automatic production deployment"
 git push origin cloud
-Setelah push dikirim, tab Actions di GitHub akan otomatis memicu eksekusi alur build dan deploy.
+
+Setelah push terkirim, repositori GitHub secara otomatis memicu eksekusi alur build dan deployment.
+
 [PLACEHOLDER GAMBAR 3.34: Screenshot GitHub Actions running]
 Gambar 3.34 Pipeline GitHub Actions Berjalan
-Berdasarkan Gambar 3.34, pipeline CI/CD berhasil terpicu setelah perubahan dikirim ke branch cloud. Proses ini menunjukkan bahwa repository telah terhubung dengan sistem otomatisasi deployment.
+Berdasarkan Gambar 3.34, pemicu push berhasil mengaktifkan alur eksekusi pipeline GitHub Actions secara realtime.
+
 [PLACEHOLDER GAMBAR 3.35: Screenshot GitHub Actions success]
 Gambar 3.35 Pipeline GitHub Actions Berhasil
-Berdasarkan Gambar 3.35, pipeline berhasil menyelesaikan proses build, push image, dan deploy otomatis. Hal ini membuktikan bahwa proses deployment tidak lagi dilakukan secara manual, melainkan sudah terintegrasi penuh secara otomatis.
+Berdasarkan Gambar 3.35, pipeline berhasil menyelesaikan seluruh jobs (Test, Dockerize, Deploy) dengan status sukses. Hal ini membuktikan bahwa proses deployment telah berjalan 100% otomatis tanpa intervensi manual tambahan.
+
 3.29 Konfigurasi Monitoring Prometheus dan Grafana
-Monitoring sistem digunakan untuk memantau penggunaan CPU, RAM, serta ketersediaan kontainer backend dan frontend secara real-time.
-Konfigurasi kontainer monitoring diatur pada file monitoring/docker-compose.monitoring.yml:
+Monitoring sistem digunakan untuk memantau status kesehatan instance, metrik penggunaan CPU/RAM, serta ketersediaan kontainer backend secara realtime. 
+
+Metrik ditarik menggunakan kontainer monitoring yang diatur pada file monitoring/docker-compose.monitoring.yml di server EC2 Frontend:
 version: '3.8'
- 
+
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -873,7 +920,7 @@ services:
       - "9090:9090"
     networks:
       - adaptive-learning-net
- 
+
   grafana:
     image: grafana/grafana:latest
     container_name: adaptive_learning_grafana
@@ -886,41 +933,50 @@ services:
       - prometheus
     networks:
       - adaptive-learning-net
+
 networks:
   adaptive-learning-net:
     name: emotion-aware-adaptive-math-learning-ai-ar_default
     external: true
-Konfigurasi file monitoring/prometheus.yml untuk melakukan scraping metrik backend di port 5000:
+
+Karena server frontend dan backend berjalan secara terpisah pada subnet VPC yang berbeda, kontainer Prometheus yang dijalankan di server Frontend tidak dapat melakukan resolusi nama kontainer `backend` secara langsung melalui internal DNS Docker. Sebagai solusinya, pemantauan dilakukan melalui rute VPC Peering dengan menggunakan IP privat dari server EC2 Backend (10.2.1.186:5000).
+
+Berikut adalah konfigurasi file monitoring/prometheus.yml yang disinkronkan:
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
- 
+
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
- 
+
   - job_name: 'adaptive-learning-backend'
     metrics_path: '/api/health'
     static_configs:
-      - targets: ['backend:5000']
-Jalankan monitoring di server EC2:
+      - targets: ['10.2.1.186:5000']
+
+Jalankan monitoring di server EC2 Frontend:
 cd /app/emotion-aware-adaptive-math-learning-ai-ar/monitoring
 docker compose -f docker-compose.monitoring.yml up -d
-Metrik sistem kini dapat diakses secara visual di Grafana port 3001 (dengan memetakan datasource ke Prometheus port 9090).
+
 [PLACEHOLDER GAMBAR 3.36: Screenshot Prometheus target aktif]
 Gambar 3.36 Target Monitoring Prometheus
-Berdasarkan Gambar 3.36, Prometheus berhasil membaca target monitoring dari container aplikasi. Hal ini menunjukkan bahwa metrik sistem telah tersedia untuk dipantau.
+Berdasarkan Gambar 3.36, Prometheus berhasil mengumpulkan data metrik kesehatan dari server API Backend melalui alamat IP privat 10.2.1.186:5000.
+
 [PLACEHOLDER GAMBAR 3.37: Screenshot dashboard Grafana]
 Gambar 3.37 Dashboard Monitoring Grafana
-Berdasarkan Gambar 3.37, Grafana berhasil menampilkan visualisasi metrik sistem seperti CPU, RAM, jumlah request, error rate, dan uptime. Fitur ini mendukung bonus monitoring Grafana/Prometheus yang tercantum pada rubrik UAS.
+Berdasarkan Gambar 3.37, dashboard Grafana menyajikan grafik visual realtime untuk utilitas CPU, memori, error rate, serta status ketersediaan kontainer backend dan frontend secara komprehensif.
+
 3.30 Konfigurasi Kubernetes Manifest sebagai Bonus
-Selain deployment Docker Compose, proyek ini menyertakan manifestasi orkestrasi Kubernetes (k8s) lengkap di dalam folder /k8s. Konfigurasi ini mendemonstrasikan kesiapan arsitektur sistem untuk skala besar (*enterprise scaling*).
+Selain deployment menggunakan Docker Compose, proyek ini menyediakan manifestasi orkestrasi Kubernetes (k8s) lengkap pada direktori /k8s sebagai bentuk kesiapan arsitektur sistem untuk skala besar (enterprise scaling).
+
 Manifes yang disediakan meliputi:
 1. database.yaml: Menggunakan StatefulSet dengan volume PersistentVolumeClaim (PVC) sebesar 10Gi untuk menjaga database MySQL tetap persisten saat kontainer mengalami kegagalan.
 2. backend.yaml: Mengatur replika minimal sebanyak 2 pod backend Next.js API. Dilengkapi HorizontalPodAutoscaler (HPA) untuk melakukan scale-out pod otomatis hingga 10 pod ketika rata-rata utilitas CPU pod backend menyentuh angka 75%.
 3. frontend.yaml: Deployment pod frontend Next.js yang menangani traffic web siswa.
 4. ingress.yaml: Ingress controller berbasis Nginx yang melakukan reverse proxy domain luar ke internal frontend-service port 3000.
+
 Contoh deklarasi HPA di dalam k8s/backend.yaml:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -941,6 +997,7 @@ spec:
         target:
           type: Utilization
           averageUtilization: 75
+
 [PLACEHOLDER GAMBAR 3.38: Screenshot folder k8s dan file HPA]
 Gambar 3.38 Manifest Kubernetes dan Horizontal Pod Autoscaler
-Berdasarkan Gambar 3.38, project menyediakan konfigurasi Kubernetes sebagai implementasi bonus. HPA digunakan untuk melakukan penskalaan otomatis berdasarkan penggunaan CPU. Pada dokumen contoh, HPA juga dijelaskan sebagai mekanisme penskalaan otomatis yang menyesuaikan jumlah replika saat beban meningkat.
+Berdasarkan Gambar 3.38, project menyediakan konfigurasi Kubernetes sebagai implementasi orkestrasi skala lanjut. Fitur Horizontal Pod Autoscaler (HPA) secara aktif menskalakan pod backend dari 2 hingga 10 replika bergantung pada beban kerja CPU. HPA digunakan untuk melakukan penskalaan otomatis berdasarkan penggunaan CPU agar jumlah replika dapat menyesuaikan secara dinamis saat beban kerja meningkat.

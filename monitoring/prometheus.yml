@@ -10,4 +10,4 @@ scrape_configs:
   - job_name: 'adaptive-learning-backend'
     metrics_path: '/api/health'
     static_configs:
-      - targets: ['backend:5000']
+      - targets: ['10.2.1.186:5000']
