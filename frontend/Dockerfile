@@ -33,6 +33,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/utils ./utils
+COPY --from=builder /app/next.config.js ./
 
 EXPOSE 3000
 
