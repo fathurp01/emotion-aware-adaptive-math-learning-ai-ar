@@ -8,6 +8,11 @@ output "backend_private_ip" {
   description = "Private IP Address of the Backend API server"
 }
 
+output "backend_public_ip" {
+  value       = aws_instance.backend_server.public_ip
+  description = "Public IP Address of the Backend API server (for CI/CD SSH)"
+}
+
 output "database_endpoint" {
   value       = aws_db_instance.mysql_db.endpoint
   description = "MySQL database endpoint connection string"

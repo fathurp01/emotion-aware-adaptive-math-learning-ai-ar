@@ -2,6 +2,22 @@ provider "aws" {
   region = var.aws_region
 }
 
+# Fetch the latest Ubuntu 22.04 LTS AMI dynamically for the active region
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
 # ==========================================
 # 1. SEGMENTED VPCS (Ketentuan Utama A)
 # ==========================================
@@ -32,6 +48,13 @@ resource "aws_vpc" "storage_vpc" {
   cidr_block           = "10.4.0.0/16"
   enable_dns_hostnames = true
   tags = { Name = "AdaptiveLearning-Storage-VPC" }
+}
+
+# E. AI Service VPC (Optional but Recommended)
+resource "aws_vpc" "ai_service_vpc" {
+  cidr_block           = "10.5.0.0/16"
+  enable_dns_hostnames = true
+  tags = { Name = "AdaptiveLearning-AIService-VPC" }
 }
 
 # ==========================================
@@ -84,6 +107,10 @@ resource "aws_route_table" "frontend_rt" {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.frontend_igw.id
   }
+  route {
+    cidr_block                = "10.2.0.0/16"
+    vpc_peering_connection_id = aws_vpc_peering_connection.front_to_back.id
+  }
   tags = { Name = "Frontend-RouteTable" }
 }
 
@@ -112,12 +139,6 @@ resource "aws_vpc_peering_connection" "back_to_db" {
   tags        = { Name = "Backend-to-DB-Peering" }
 }
 
-# Route in Frontend Route Table to Backend VPC
-resource "aws_route" "frontend_to_backend_route" {
-  route_table_id            = aws_route_table.frontend_rt.id
-  destination_cidr_block    = "10.2.0.0/16"
-  vpc_peering_connection_id = aws_vpc_peering_connection.front_to_back.id
-}
 
 # Backend Route Table
 resource "aws_route_table" "backend_rt" {
@@ -176,7 +197,7 @@ resource "aws_route_table_association" "database_rta_b" {
 
 # Frontend Server
 resource "aws_instance" "frontend_server" {
-  ami                    = var.ami_id
+  ami                    = data.aws_ami.ubuntu.id
   instance_type          = "t3.micro"
   subnet_id              = aws_subnet.frontend_public_subnet.id
   vpc_security_group_ids = [aws_security_group.frontend_sg.id]
@@ -187,7 +208,7 @@ resource "aws_instance" "frontend_server" {
 
 # Backend API Server
 resource "aws_instance" "backend_server" {
-  ami                    = var.ami_id
+  ami                    = data.aws_ami.ubuntu.id
   instance_type          = "t3.micro"
   subnet_id              = aws_subnet.backend_public_subnet.id
   vpc_security_group_ids = [aws_security_group.backend_sg.id]
@@ -295,6 +316,8 @@ resource "aws_security_group" "db_sg" {
   name        = "db-sg"
   description = "Allow MySQL traffic from backend only"
   vpc_id      = aws_vpc.database_vpc.id
+
+  depends_on = [aws_vpc_peering_connection.back_to_db]
 
   ingress {
     from_port       = 3306

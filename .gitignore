@@ -51,3 +51,6 @@ public/uploads/*
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
+
+# Keys
+*.pem
