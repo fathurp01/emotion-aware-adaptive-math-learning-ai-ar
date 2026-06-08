@@ -839,13 +839,17 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_BACKEND_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.EC2_FRONTEND_HOST }} >> ~/.ssh/known_hosts
+
       - name: Deploy Backend to Backend EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_BACKEND_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_BACKEND_HOST }} 'bash -s' << 'EOF'
             mkdir -p /app/emotion-aware-adaptive-math-learning-ai-ar
             cd /app/emotion-aware-adaptive-math-learning-ai-ar
             if [ ! -d .git ]; then
@@ -862,14 +866,11 @@ jobs:
             docker compose -f docker-compose.backend.yml up -d
             docker compose -f docker-compose.backend.yml exec -T backend npx prisma db push
             docker compose -f docker-compose.backend.yml exec -T backend npx prisma db seed
+          EOF
 
       - name: Deploy Frontend to Frontend EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_FRONTEND_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_FRONTEND_HOST }} 'bash -s' << 'EOF'
             mkdir -p /app/emotion-aware-adaptive-math-learning-ai-ar
             cd /app/emotion-aware-adaptive-math-learning-ai-ar
             if [ ! -d .git ]; then
@@ -886,6 +887,7 @@ jobs:
             docker compose -f docker-compose.frontend.yml pull
             docker compose -f docker-compose.frontend.yml down
             docker compose -f docker-compose.frontend.yml up -d
+          EOF
 
 [PLACEHOLDER GAMBAR 3.33: Screenshot file ci-cd.yml]
 Gambar 3.33 Konfigurasi GitHub Actions CI/CD
