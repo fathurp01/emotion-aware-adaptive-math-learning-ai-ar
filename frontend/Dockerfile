@@ -36,4 +36,4 @@ COPY --from=builder /app/utils ./utils
 
 EXPOSE 3000
 
-CMD ["npx", "next", "start", "-p", "3000"]
+CMD ["sh", "-c", "node scripts/replace-env.js && npx next start -p 3000"]
