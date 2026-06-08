@@ -16,7 +16,7 @@
  * - CI/CD verification
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { isGeminiConfigured } from '@/lib/gemini';
 import { isNvidiaConfigured } from '@/lib/nvidia';
@@ -46,7 +46,7 @@ interface HealthCheckResponse {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const response: HealthCheckResponse = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -137,6 +137,43 @@ export async function GET() {
   // Return appropriate HTTP status code
   const httpStatus = response.status === 'healthy' ? 200 : 
                      response.status === 'degraded' ? 200 : 503;
+
+  const userAgent = request.headers.get('user-agent') || '';
+  const accept = request.headers.get('accept') || '';
+  const isPrometheus = userAgent.includes('Prometheus') || accept.includes('application/openmetrics-text') || accept.includes('text/plain');
+
+  if (isPrometheus) {
+    const systemUp = response.status === 'unhealthy' ? 0 : 1;
+    const dbConnected = response.checks.database.status === 'ok' ? 1 : 0;
+    const aiConnected = response.checks.ai.status === 'ok' ? 1 : 0;
+    const dbResponseTime = response.checks.database.responseTime || 0;
+    const uptime = response.uptime;
+
+    const metricsText = [
+      '# HELP system_up Status of the system (1 = healthy/degraded, 0 = unhealthy)',
+      '# TYPE system_up gauge',
+      `system_up ${systemUp}`,
+      '# HELP database_connected Status of the database connection (1 = connected, 0 = error)',
+      '# TYPE database_connected gauge',
+      `database_connected ${dbConnected}`,
+      '# HELP database_response_time_ms Database query response time in milliseconds',
+      '# TYPE database_response_time_ms gauge',
+      `database_response_time_ms ${dbResponseTime}`,
+      '# HELP ai_connected Status of the AI provider connection (1 = connected, 0 = error)',
+      '# TYPE ai_connected gauge',
+      `ai_connected ${aiConnected}`,
+      '# HELP system_uptime_seconds System uptime in seconds',
+      '# TYPE system_uptime_seconds counter',
+      `system_uptime_seconds ${uptime}`,
+    ].join('\n') + '\n';
+
+    return new Response(metricsText, {
+      status: httpStatus,
+      headers: {
+        'Content-Type': 'text/plain; version=0.0.4; charset=utf-8',
+      },
+    });
+  }
 
   return NextResponse.json(response, { status: httpStatus });
 }
