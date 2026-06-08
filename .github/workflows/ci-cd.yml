@@ -102,12 +102,12 @@ jobs:
               git pull origin cloud
             fi
             export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
-            docker compose -f docker-compose.backend.yml pull
             docker compose -f docker-compose.backend.yml down
+            docker system prune -a -f
+            docker compose -f docker-compose.backend.yml pull
             docker compose -f docker-compose.backend.yml up -d
             docker compose -f docker-compose.backend.yml exec -T backend npx prisma db push
             docker compose -f docker-compose.backend.yml exec -T backend npx prisma db seed
-            docker system prune -a -f
           EOF
 
       - name: Deploy Frontend to Frontend EC2
@@ -127,8 +127,8 @@ jobs:
             export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
             export BACKEND_PRIVATE_IP=${{ secrets.EC2_BACKEND_PRIVATE_IP }}
             export FRONTEND_PUBLIC_DOMAIN=${{ secrets.FRONTEND_PUBLIC_DOMAIN }}
-            docker compose -f docker-compose.frontend.yml pull
             docker compose -f docker-compose.frontend.yml down
-            docker compose -f docker-compose.frontend.yml up -d
             docker system prune -a -f
+            docker compose -f docker-compose.frontend.yml pull
+            docker compose -f docker-compose.frontend.yml up -d
           EOF
