@@ -1,0 +1,22 @@
+ssh -i adaptive-learning-key.pem -L 9090:localhost:9090 -L 3001:localhost:3001 ubuntu@13.228.24.69
+
+
+
+2. Buka Prometheus di Browser Anda
+Setelah terminal SSH Tunneling berjalan, buka web browser Anda (Chrome/Firefox/Edge) lalu akses URL berikut:
+
+👉 http://localhost:9090/targets
+
+Di halaman ini, Anda akan melihat daftar target monitoring Prometheus:
+
+adaptive-learning-backend (http://10.2.1.186:5000/api/health)
+prometheus (http://localhost:9090/metrics)
+Silakan ambil screenshot halaman targets tersebut untuk dijadikan Gambar 3.36.
+
+3. Bonus: Mengakses Grafana
+Jika Anda juga memerlukan screenshot dashboard Grafana (misal untuk gambar pendukung monitoring lainnya), Anda dapat mengaksesnya di:
+
+👉 http://localhost:3001
+
+Username: admin
+Password: admin (Anda akan diminta mengganti password saat pertama kali login, silakan lewati saja dengan mengklik Skip).
